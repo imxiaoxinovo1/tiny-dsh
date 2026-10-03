@@ -161,11 +161,22 @@ export class Session {
 
     #events: SessionEvent[] = []
     #seq = 0
+    #listener: ((event: SessionEvent) => void) | undefined
 
-    constructor(header: Partial<SessionHeader> = {}) {
+    constructor(header: Partial<SessionHeader> = {}, events: readonly SessionEvent[] = []) {
         this.id = header.id ?? randomUUID()
         this.createdAt = header.createdAt ?? new Date().toISOString()
         this.title = header.title
+        // 从磁盘恢复时直接灌入历史事件，seq 从最大值继续。
+        for (const event of events) {
+            this.#events.push(event)
+            if (event.seq > this.#seq) this.#seq = event.seq
+        }
+    }
+
+    /** 绑定「事件已追加」监听；由 SessionStore 用于通知持久化观察者。 */
+    bind(listener: (event: SessionEvent) => void): void {
+        this.#listener = listener
     }
 
     /** 事件日志（只读视图）。 */
@@ -182,6 +193,7 @@ export class Session {
             at: new Date().toISOString(),
         }
         this.#events.push(event)
+        this.#listener?.(event)
         return event
     }
 
@@ -207,15 +219,51 @@ export class Session {
     }
 }
 
-/** 内存会话注册表。E1 会用 JSONL provider 替换它的持久化侧。 */
+/** 会话生命周期观察者；E1 的持久化 provider 用它把事件落盘。 */
+export interface SessionObserver {
+    /** 会话被创建（写 header）。 */
+    create?(session: Session): void
+    /** 任意事件被追加（落一行）。 */
+    append?(session: Session, event: SessionEvent): void
+}
+
+/** 内存会话注册表；持久化由观察者挂载，store 自身不碰磁盘。 */
 export class SessionStore {
     #sessions = new Map<string, Session>()
+    #observers = new Set<SessionObserver>()
+
+    /** 注册观察者；返回 disposer。 */
+    observe(observer: SessionObserver): () => void {
+        this.#observers.add(observer)
+        return () => {
+            this.#observers.delete(observer)
+        }
+    }
 
     /** 新建一个会话；`meta.title` 可选。 */
     create(meta: { title?: string } = {}): Session {
         const session = new Session({ title: meta.title })
-        this.#sessions.set(session.id, session)
+        this.#attach(session)
+        for (const observer of this.#observers) observer.create?.(session)
         return session
+    }
+
+    /** 把恢复出来的会话放回 store（不触发 create，避免重写 header）。 */
+    adopt(session: Session): Session {
+        this.#attach(session)
+        return session
+    }
+
+    /** 全部会话对象（持久化回填用）。 */
+    all(): Session[] {
+        return [...this.#sessions.values()]
+    }
+
+    #attach(session: Session): void {
+        session.bind((event) => {
+            for (const observer of this.#observers) observer.append?.(session, event)
+        })
+        this.#sessions.set(session.id, session)
     }
 
     /** 取会话，不存在时返回 `undefined`。 */

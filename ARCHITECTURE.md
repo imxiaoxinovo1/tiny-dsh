@@ -58,7 +58,8 @@ cli ──▶ plugins ──▶ core
 
 | service | Definition 职责 | Provider | Consumer | 里程碑 |
 |---|---|---|---|---|
-| `ctx.sessions` | 追加式事件日志 | 内存 / JSONL | loop、cli | D2 / E1 |
+| `ctx.sessions` | 追加式事件日志 | 内存 | loop、cli | D2 |
+| `ctx.persistence` | 会话落盘 / 恢复 | JSONL | sessions、cli | E1 |
 | `ctx.tools` | 工具注册、schema、执行 | bash、files | loop | D3 |
 | `ctx.llm` | Provider 注册与路由 | deepseek、mock | loop | D4 |
 | `ctx.systemPrompt` | section / context 组装 | — | loop、cli | D6 |
@@ -186,6 +187,16 @@ interface SessionsService {
     append(id: string, type: string, data: unknown): SessionEvent
     deriveMessages(id: string): ChatMessage[]   // 每次现算，不缓存
 }
+
+// ---------- E1 ctx.persistence ----------
+interface PersistenceService {
+    list(): Promise<SessionMeta[]>
+    resume(id: string): Promise<Session | undefined>   // 读盘并放回 store
+    delete(id: string): Promise<boolean>
+    flush(): Promise<void>                            // 等待排队写入落盘
+}
+// 方向：persistence 订阅 sessions（store.observe），而不是 sessions 依赖它。
+// 首行 SessionHeader，之后一行一个事件；半行由 decodeSessionFile 跳过。
 
 // ---------- D3 ctx.tools ----------
 interface ToolsService {
@@ -359,7 +370,7 @@ cli/agents.run(input)
 | D5 | `src/core/agent.ts`、`src/core/loop.ts`、`src/plugins/agents.ts`、`src/plugins/agent-loop.ts`、`test/loop.test.ts` | `ctx.sessions`、`ctx.tools`、`ctx.llm`、`ctx.systemPrompt` |
 | D6 | `src/core/prompt.ts`、`src/plugins/system-prompt.ts`、`src/plugins/runtime-context.ts`、`test/prompt.test.ts` | `ctx.systemPrompt` |
 | D7 | `src/core/path.ts`、`src/tools/{guard,files,search,shell}.ts`、`src/plugins/{sandbox,approval,cli}.ts`、`src/cli/{answerer,repl}.ts`、`test/{path,tools}.test.ts` | `ctx.sandbox`、`ctx.approval` |
-| E1 | `src/providers/jsonl-persistence.ts`、`src/plugins/persistence.ts` | `ctx.sessions` |
+| E1 | `src/core/persistence.ts`、`src/providers/jsonl-persistence.ts`、`src/plugins/persistence.ts`、`src/cli/commands.ts`、`test/persistence.test.ts` | `ctx.sessions` → `ctx.persistence` |
 | E2 | `src/plugins/token-meter.ts`、`src/providers/basic-compaction.ts`、`src/plugins/compaction.ts` | `ctx.sessions`、`ctx.tokenMeter` |
 | E3 | `src/core/permission-preset.ts`、`src/plugins/permission-presets.ts` | `ctx.sandbox`、`ctx.approval` |
 | E4 | `src/core/goal.ts`、`src/plugins/goal.ts` | `ctx.sessions` |
