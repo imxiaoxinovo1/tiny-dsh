@@ -416,6 +416,91 @@ cli/agents.run(input)
 | A5 | 没有审批通道 = 拒绝 | 默认拒绝优于默认放行（原则 5） |
 | A6 | 取消前先补事件日志 | 保证「任何时刻的投影都是合法请求」（不变式 1） |
 
+### 11. 文件索引
+
+**阅读顺序**：`src/index.ts` → `core/session.ts` → `core/tool.ts` → `core/llm.ts` → `core/loop.ts` → `core/prompt.ts` → `plugins/agent-loop.ts` → 再按兴趣看 `persistence` / `compaction` / `goal`。
+
+#### `src/core/` —— 纯逻辑，不 import cordis（可独立单测）
+
+| 文件 | 职责 | 里程碑 |
+|---|---|---|
+| `message.ts` | 共享类型：`ChatMessage` / `ToolCall` / `ContentBlock` / `JsonSchema` | D3 |
+| `session.ts` | 事件日志、`Session`、`SessionStore`（observe/adopt）、`deriveMessages()`（折 reset 与 `surfaceOp` 遮蔽） | D2 / E2 |
+| `tool.ts` | `ToolDefinition` / `ToolResult` / `ToolRegistry`；`ApprovalPort` / `SandboxPort` / `SandboxMode` | D3 / D7 |
+| `llm.ts` | `SseParser`、`ModelAssembler`、`parseChatCompletionChunk`、`LlmRuntime` 路由 | D4 |
+| `loop.ts` | `AgentLoopRuntime`：model → tool → model；取消先补齐 tool/result 再抛 | D5 |
+| `agent.ts` | `Agent`（run/cancel/running）+ `AgentRuntime` 注册表 | D5 |
+| `prompt.ts` | `SystemPromptRuntime`：section / context、order、每步重算 | D6 |
+| `path.ts` | `PathGate`：词法拒绝绝对路径与越界，`realpath` 拒绝软链逃逸 | D7 |
+| `persistence.ts` | JSONL 编解码：首行 header、逐行事件、**容错半行** | E1 |
+| `token.ts` | token 估算（宽字符更重）、消息 / 请求计量 | E2 |
+| `compaction.ts` | tool-result pruner、区间选择（不切开 tool 配对）、`CompactionRuntime.prepare/maybeCompact` | E2 |
+| `permission-preset.ts` | 预设表、`derivePreset`（不匹配即 `custom`）、保留名校验 | E3 |
+| `goal.ts` | `GoalRuntime`：四阶段 + Round 配额；`nextRound`（自动）/ `continueRound`（显式） | E4 |
+
+#### `src/plugins/` —— Service 适配层（唯一 import cordis 的地方）
+
+| 文件 | 提供 | 备注 |
+|---|---|---|
+| `sessions.ts` | `ctx.sessions` | 薄代理到 `SessionStore` |
+| `tools.ts` | `ctx.tools` | `register` 绑定**调用方** fiber |
+| `llm.ts` | `ctx.llm` | 同上 |
+| `agent-loop.ts` | `ctx.agentLoop` | 可选探测 systemPrompt / approval / sandbox / compaction |
+| `agents.ts` | `ctx.agents` | runner 委托 `ctx.agentLoop` |
+| `system-prompt.ts` | `ctx.systemPrompt` | `section` / `context` 绑定调用方 fiber |
+| `runtime-context.ts` | — | 身份 section + 环境 context（时间 / cwd / 平台） |
+| `approval.ts` | `ctx.approval` | 默认拒绝；`never` = 不询问直接拒绝 |
+| `sandbox.ts` | `ctx.sandbox` | 包装 `PathGate`；`setMode` |
+| `permission-presets.ts` | `ctx.permissionPresets` | `select` 一次写两个旋钮 |
+| `persistence.ts` | `ctx.persistence` | **订阅** sessions，而非被 sessions 依赖 |
+| `token-meter.ts` | `ctx.tokenMeter` | 无状态 |
+| `compaction.ts` | `ctx.compaction` | 默认摘要器走 `ctx.llm`（llm 不进 inject） |
+| `goal.ts` | `ctx.goal` | 每次变更写 `goal/change` 快照事件 |
+| `cli.ts` | — | 仅 TTY 下启动 REPL |
+| `hello.ts` | `ctx.hello` | D1 教学插件 |
+
+#### `src/providers/`
+
+| 文件 | 职责 |
+|---|---|
+| `deepseek.ts` | Chat Completions 流式 provider；`fetch` 可注入；缺 key / HTTP 错误可读 |
+| `jsonl-persistence.ts` | 每会话一文件；写入串行化队列 + `flush()`；id 白名单防目录穿越 |
+
+#### `src/tools/`
+
+| 文件 | 职责 |
+|---|---|
+| `guard.ts` | 审批 / 沙箱守卫与参数读取；**缺能力 fail closed**；full-access 下不触发审批 |
+| `files.ts` | `read_file` / `write_file` / `edit_file` |
+| `search.ts` | `glob` / `grep`（自带递归遍历 + glob→RegExp，无额外依赖） |
+| `shell.ts` | `shell`；超时 + 输出截断双保险；`CommandRunner` 可注入 |
+
+#### `src/cli/`
+
+| 文件 | 职责 |
+|---|---|
+| `commands.ts` | 斜杠命令纯函数：`/sessions` `/resume` `/delete` `/permissions` `/goal` `/continue` |
+| `repl.ts` | 最小 REPL；目标 active 且未到上限时自动续行 |
+| `answerer.ts` | `[Y/n]` 审批回答（空回车 / y 通过） |
+
+#### 测试文件
+
+| 测试 | 覆盖 |
+|---|---|
+| `plugin.test.ts` | D1：Context / Plugin / Service / effect / disposer / inject |
+| `session.test.ts` | D2：投影、arguments 重新序列化、reasoning 保留、clear |
+| `tool.test.ts` | D3：schema 白名单、未知工具、错误收敛、effect 归属 |
+| `llm.test.ts` | D4：SSE 边界、分片拼装、路由、provider 端到端（fake fetch） |
+| `loop.test.ts` | D5：工具往返、取消配对、20 轮无上限、错误收敛 |
+| `prompt.test.ts` | D6：order、空片段、每步重算、与 loop 集成 |
+| `path.test.ts` / `tools.test.ts` | D7：闸门与软链、审批 fail closed、超时 / 截断、glob / grep |
+| `persistence.test.ts` | E1：落行、半行容忍、重启恢复、斜杠命令 |
+| `compaction.test.ts` | E2：事件顺序、surfaceOp 投影、pruner、失败无 end、loop 集成 |
+| `permissions.test.ts` | E3：预设映射、派生 custom、never 语义、工具集成 |
+| `goal.test.ts` | E4：阶段迁移、Round 上限、事件持久化与恢复、CLI |
+
+真实端到端见 `scripts/e2e.ts`（`pnpm run e2e`）。
+
 ## 与 DSH 的对应
 
 | tiny-dsh | DSH 出处 |

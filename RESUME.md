@@ -75,6 +75,7 @@ pnpm start         # 组合根：打印就绪与服务清单
 pnpm run e2e                                    # 一次带工具往返的 run
 pnpm run e2e "创建 note.txt 并读回来"            # 写路径：闸门 + 审批 + read/write
 $env:TINY_DSH_MAX_TOKENS=10; $env:TINY_DSH_E2E_TURNS=6; pnpm run e2e "Reply OK"   # 强制真实压缩
+$env:TINY_DSH_E2E_GOAL="Reply with the next integer only."; $env:TINY_DSH_MAX_GOAL_ROUNDS=2; pnpm run e2e   # 目标模式：Round 上限会停
 ```
 
 设计文档见 [ARCHITECTURE.md](./ARCHITECTURE.md)；里程碑与验收标准见 [ROADMAP.md](./ROADMAP.md)。
