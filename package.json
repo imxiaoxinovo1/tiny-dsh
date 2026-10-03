@@ -1,0 +1,32 @@
+{
+    "name": "tiny-dsh",
+    "version": "0.0.1",
+    "private": true,
+    "type": "module",
+    "description": "A minimal coding-agent harness built on cordis, organized by DSH-style capability seams.",
+    "engines": {
+        "node": ">=22.18.0"
+    },
+    "scripts": {
+        "start": "node src/index.ts",
+        "test": "node --test test/*.test.ts",
+        "typecheck": "tsc --noEmit",
+        "lint": "biome check ."
+    },
+    "keywords": [
+        "agent",
+        "harness",
+        "cordis",
+        "llm"
+    ],
+    "license": "MIT",
+    "dependencies": {
+        "@deepseek-ai/cordis": "^4.0.1",
+        "dotenv": "^17.4.2"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "^2.5.10",
+        "@types/node": "^22.10.2",
+        "typescript": "^5.8.3"
+    }
+}
