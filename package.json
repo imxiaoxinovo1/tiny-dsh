@@ -22,6 +22,14 @@
     ],
     "author": "imxiaoxinovo1",
     "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/imxiaoxinovo1/tiny-dsh.git"
+    },
+    "homepage": "https://github.com/imxiaoxinovo1/tiny-dsh#readme",
+    "bugs": {
+        "url": "https://github.com/imxiaoxinovo1/tiny-dsh/issues"
+    },
     "dependencies": {
         "@deepseek-ai/cordis": "^4.0.1",
         "dotenv": "^17.4.2"

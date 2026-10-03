@@ -1,5 +1,6 @@
 # tiny-dsh
 
+[![CI](https://github.com/imxiaoxinovo1/tiny-dsh/actions/workflows/ci.yml/badge.svg)](https://github.com/imxiaoxinovo1/tiny-dsh/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 ![Node.js](https://img.shields.io/badge/node-%3E%3D22.18-brightgreen.svg)
 ![Build](https://img.shields.io/badge/build-none%20(native%20type%20stripping)-blue.svg)
