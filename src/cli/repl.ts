@@ -37,7 +37,11 @@ export async function startRepl(ctx: Context, options: ReplOptions): Promise<voi
 
             const command = await runSlashCommand(
                 line,
-                { sessions: ctx.sessions, persistence: ctx.get('persistence') },
+                {
+                    sessions: ctx.sessions,
+                    persistence: ctx.get('persistence'),
+                    permissionPresets: ctx.get('permissionPresets'),
+                },
                 { sessionId: active.sessionId },
             )
             if (command) {

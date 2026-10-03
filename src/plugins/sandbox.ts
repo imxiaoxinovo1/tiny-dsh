@@ -26,7 +26,8 @@ export interface SandboxConfig {
 }
 
 export class SandboxService extends Service {
-    readonly mode: SandboxMode
+    /** 当前模式；由 permission presets 通过 setMode 改写。 */
+    mode: SandboxMode
     /** workspace 的绝对路径（未 realpath；闸门内部会 realpath）。 */
     readonly workspace: string
     private gate: Promise<PathGate> | undefined
@@ -35,6 +36,11 @@ export class SandboxService extends Service {
         super(ctx, 'sandbox')
         this.workspace = path.resolve(config.workspace ?? process.cwd())
         this.mode = config.mode ?? 'workspace-write'
+    }
+
+    /** 切换模式；permission presets 的写路径。 */
+    setMode(mode: SandboxMode): void {
+        this.mode = mode
     }
 
     private gateway(): Promise<PathGate> {

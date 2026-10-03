@@ -1,4 +1,5 @@
 import { type Context, Service } from '@deepseek-ai/cordis'
+import type { ApprovalPolicy } from '../core/permission-preset.ts'
 import type { ApprovalRequest } from '../core/tool.ts'
 
 /**
@@ -22,6 +23,8 @@ export class ApprovalService extends Service {
     // 不用 # 私有字段：Service 方法里的 this 是 tracing 影子代理。
     private answerer: ApprovalAnswerer | undefined
     private answererToken = 0
+    /** 当前策略；由 permission presets 通过 setPolicy 改写。 */
+    policy: ApprovalPolicy = 'ask'
 
     constructor(ctx: Context) {
         super(ctx, 'approval')
@@ -40,13 +43,24 @@ export class ApprovalService extends Service {
         }, 'approval.setAnswerer()')
     }
 
+    /** 切换策略；permission presets 的写路径。 */
+    setPolicy(policy: ApprovalPolicy): void {
+        this.policy = policy
+    }
+
     /** 当前是否有审批通道。 */
     get hasAnswerer(): boolean {
         return this.answerer !== undefined
     }
 
-    /** 请求审批；没有回答者时默认拒绝。 */
+    /**
+     * 请求审批。
+     *
+     * - `never`：不询问任何人，直接拒绝（与 DSH 语义一致）；
+     * - `ask`：交给回答者；没有回答者时 fail closed。
+     */
     async request(request: ApprovalRequest): Promise<'allow' | 'deny'> {
+        if (this.policy === 'never') return 'deny'
         if (!this.answerer) return 'deny'
         return (await this.answerer(request)) ? 'allow' : 'deny'
     }

@@ -67,6 +67,7 @@ cli ──▶ plugins ──▶ core
 | `ctx.agentLoop` | model → tool → model 推进 | — | agents | D5 |
 | `ctx.approval` | 审批请求与结果 | CLI answerer | tools | D7 / E3 |
 | `ctx.sandbox` | 路径闸门 + 命令策略 | — | tools | D7 / E3 |
+| `ctx.permissionPresets` | sandbox 模式 × 审批策略的具名捆绑 | — | cli | E3 |
 | `ctx.tokenMeter` | token 估算 | 估算器 | compaction | E2 |
 | `ctx.compaction` | 阈值压缩 | basic-compaction | loop | E2 |
 | `ctx.goal` | 持久目标 + Round | — | cli | E4 |
@@ -158,6 +159,7 @@ root.plugin(approval)                    // 无依赖：审批通道（answerer 
 root.plugin(sandbox, { workspace })      // 无依赖：路径闸门 + 命令策略
 root.plugin(tokenMeter)                  // 无依赖：token 估算
 root.plugin(compaction)                  // inject tokenMeter, sessions
+root.plugin(permissionPresets)           // inject sandbox, approval（E3）
 root.plugin(agents)                      // inject sessions, tools, llm, systemPrompt
 root.plugin(agentLoop)                   // inject agents
 root.plugin(persistence)                 // inject sessions（E1）
@@ -267,14 +269,32 @@ interface PromptContext extends Omit<PromptSection, 'text'> {
 interface ApprovalService {
     request(request: ApprovalRequest): Promise<'allow' | 'deny'>
     setAnswerer(answerer: (request: ApprovalRequest) => Promise<boolean>): () => void
+    policy: 'ask' | 'never'      // never = 不询问任何人，直接拒绝（DSH 语义）
+    setPolicy(policy: 'ask' | 'never'): void
 }
 
 interface SandboxService {
-    readonly mode: 'read-only' | 'workspace-write' | 'danger-full-access'
-    readonly policy: 'ask' | 'never' | 'auto'
+    mode: 'read-only' | 'workspace-write' | 'danger-full-access'
+    readonly workspace: string
+    setMode(mode: SandboxMode): void
     resolvePath(path: string, intent: 'read' | 'write'): Promise<string>   // 越界即 reject
     checkCommand(command: string): Promise<void>
 }
+// danger-full-access 下 sandbox 已放行全部路径，工具不再触发审批：
+// 这就是 danger-full-access = full-access + never 能自洽的原因。
+
+// ---------- E3 ctx.permissionPresets ----------
+interface PermissionPresetsService {
+    list(): PermissionPreset[]
+    current(): string                     // 生效的预设名，或派生的 'custom'
+    resolve(name: string): PermissionPreset
+    select(name: string): void            // 一次写两个旋钮
+    setMode(mode: SandboxMode): void      // 单独改旋钮 → current() 可能降级 custom
+    setPolicy(policy: 'ask' | 'never'): void
+}
+// 默认表：workspace-write = workspace-write + ask；
+//          danger-full-access = danger-full-access + never。
+// 'custom' / 'auto' 是保留名，不可作为可配置预设。
 
 // ---------- E2 ctx.tokenMeter / ctx.compaction ----------
 interface TokenMeterService {
@@ -376,7 +396,7 @@ cli/agents.run(input)
 | D7 | `src/core/path.ts`、`src/tools/{guard,files,search,shell}.ts`、`src/plugins/{sandbox,approval,cli}.ts`、`src/cli/{answerer,repl}.ts`、`test/{path,tools}.test.ts` | `ctx.sandbox`、`ctx.approval` |
 | E1 | `src/core/persistence.ts`、`src/providers/jsonl-persistence.ts`、`src/plugins/persistence.ts`、`src/cli/commands.ts`、`test/persistence.test.ts` | `ctx.sessions` → `ctx.persistence` |
 | E2 | `src/core/token.ts`、`src/core/compaction.ts`、`src/plugins/{token-meter,compaction}.ts`、`test/compaction.test.ts` | `ctx.sessions`、`ctx.tokenMeter` |
-| E3 | `src/core/permission-preset.ts`、`src/plugins/permission-presets.ts` | `ctx.sandbox`、`ctx.approval` |
+| E3 | `src/core/permission-preset.ts`、`src/plugins/permission-presets.ts`、`test/permissions.test.ts` | `ctx.sandbox`、`ctx.approval` |
 | E4 | `src/core/goal.ts`、`src/plugins/goal.ts` | `ctx.sessions` |
 
 ### 10. 架构决策记录（ADR）

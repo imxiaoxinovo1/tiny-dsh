@@ -19,9 +19,17 @@ export interface CommandPersistencePort {
     delete(id: string): Promise<boolean>
 }
 
+/** 命令用到的权限预设能力；未挂载时为 undefined。 */
+export interface CommandPresetsPort {
+    current(): string
+    list(): { name: string; sandbox: string; approval: string }[]
+    select(name: string): void
+}
+
 export interface CommandPorts {
     sessions: CommandSessionsPort
     persistence?: CommandPersistencePort
+    permissionPresets?: CommandPresetsPort
 }
 
 /** 当前活跃会话。 */
@@ -55,7 +63,9 @@ export async function runSlashCommand(
 
     switch (command) {
         case '/help':
-            return { output: '/help  /sessions  /resume <id>  /delete <id>  /clear  /exit' }
+            return {
+                output: '/help  /sessions  /resume <id>  /delete <id>  /clear  /permissions  /permission <name>  /exit',
+            }
 
         case '/exit':
         case '/quit':
@@ -85,6 +95,29 @@ export async function runSlashCommand(
             if (!argument) return { output: 'usage: /delete <id>' }
             const removed = await ports.persistence.delete(argument)
             return { output: removed ? `deleted ${argument}` : `session "${argument}" not found` }
+        }
+
+        case '/permissions': {
+            const presets = ports.permissionPresets
+            if (!presets) return { output: 'permission presets are not enabled' }
+            const current = presets.current()
+            const rows = presets.list().map((preset) => {
+                const marker = preset.name === current ? '*' : ' '
+                return `${marker} ${preset.name}  (${preset.sandbox} + ${preset.approval})`
+            })
+            return { output: [`current: ${current}`, ...rows].join('\n') }
+        }
+
+        case '/permission': {
+            const presets = ports.permissionPresets
+            if (!presets) return { output: 'permission presets are not enabled' }
+            if (!argument) return { output: 'usage: /permission <name>' }
+            try {
+                presets.select(argument)
+            } catch (error) {
+                return { output: error instanceof Error ? error.message : String(error) }
+            }
+            return { output: `permission -> ${presets.current()}` }
         }
 
         default:

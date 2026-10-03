@@ -50,4 +50,5 @@ D5：Agent 与 Agent Loop（model → tool → model），见 [`src/core/loop.ts
 D6：System Prompt 的 section / context 组装，见 [`src/core/prompt.ts`](./src/core/prompt.ts)。
 D7：真实文件 / shell 工具、workspace 路径闸门、审批与 CLI，见 [`src/core/path.ts`](./src/core/path.ts)、[`src/plugins/approval.ts`](./src/plugins/approval.ts)。
 E1：JSONL 会话持久化与崩溃恢复，CLI 支持 `/sessions` `/resume` `/delete`，见 [`src/core/persistence.ts`](./src/core/persistence.ts)。
-E2：token 计量 + 工具结果剪枝 + 基于 surfaceOp 的区间摘要压缩，见 [`src/core/compaction.ts`](./src/core/compaction.ts)。实现进度见 [ROADMAP.md](./ROADMAP.md)。
+E2：token 计量 + 工具结果剪枝 + 基于 surfaceOp 的区间摘要压缩，见 [`src/core/compaction.ts`](./src/core/compaction.ts)。
+E3：sandbox 模式 × 审批策略的权限预设（含派生 `custom`），见 [`src/core/permission-preset.ts`](./src/core/permission-preset.ts)。实现进度见 [ROADMAP.md](./ROADMAP.md)。

@@ -7,6 +7,7 @@ import * as cli from './plugins/cli.ts'
 import * as compaction from './plugins/compaction.ts'
 import * as hello from './plugins/hello.ts'
 import * as llm from './plugins/llm.ts'
+import * as permissionPresets from './plugins/permission-presets.ts'
 import * as persistence from './plugins/persistence.ts'
 import * as runtimeContext from './plugins/runtime-context.ts'
 import * as sandbox from './plugins/sandbox.ts'
@@ -28,6 +29,7 @@ const workspace = process.env.TINY_DSH_WORKSPACE ?? process.cwd()
 const model = process.env.TINY_DSH_MODEL ?? 'deepseek/deepseek-v4-flash'
 const sessionsDir = process.env.TINY_DSH_SESSIONS ?? 'sessions'
 const maxTokens = Number(process.env.TINY_DSH_MAX_TOKENS ?? '') || 8000
+const permission = process.env.TINY_DSH_PERMISSION ?? 'workspace-write'
 const root = new Context()
 
 // 核心 seam：加载顺序由 inject 决定，这里只是可读性。
@@ -40,6 +42,7 @@ await root.plugin(llm)
 await root.plugin(compaction, { maxTokens, model })
 await root.plugin(approval)
 await root.plugin(sandbox, { workspace })
+await root.plugin(permissionPresets, { defaultPreset: permission })
 await root.plugin(agentLoop)
 await root.plugin(agents)
 
@@ -82,7 +85,10 @@ console.log(
 console.log(
     `  ctx.systemPrompt -> ${root.systemPrompt.list().length} fragment(s), ${prompt.length} chars`,
 )
-console.log(`  ctx.sandbox -> ${root.sandbox.mode} @ ${root.sandbox.workspace}`)
+console.log(
+    `  ctx.sandbox -> ${root.sandbox.mode} + approval/${root.approval.policy} ` +
+        `(preset: ${root.permissionPresets.current()}) @ ${root.sandbox.workspace}`,
+)
 console.log(
     `  ctx.tokenMeter / ctx.compaction -> ~${root.tokenMeter.count(prompt)} tokens now, threshold ${root.compaction.maxTokens}`,
 )

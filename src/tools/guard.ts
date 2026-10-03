@@ -25,8 +25,15 @@ export function workspaceOf(exec: ToolExecution): string {
     return sandbox.workspace
 }
 
-/** 请求审批；没有审批通道或未获批准时抛可读错误。 */
+/**
+ * 请求审批；没有审批通道或未获批准时抛可读错误。
+ *
+ * `danger-full-access` 下 sandbox 已经放行全部路径，所以不再触发审批 ——
+ * 这正解释了 DSH 的 `danger-full-access` = full-access + never 组合：
+ * `never` 本身是「不询问、直接拒绝」，放行来自沙箱模式。
+ */
 export async function approve(exec: ToolExecution, request: ApprovalRequest): Promise<void> {
+    if (exec.sandbox?.mode === 'danger-full-access') return
     const approval = exec.approval
     if (!approval) {
         throw new Error(
