@@ -33,12 +33,15 @@ pnpm start
 pnpm test               # node --test test/*.test.ts
 pnpm typecheck          # tsc --noEmit
 pnpm lint               # biome check .
+
+pnpm run e2e            # 真实模型端到端冒烟（需要 .env 里的 DEEPSEEK_API_KEY）
 ```
 
 ## 文档
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md) —— 分层、seam、核心数据结构、关键不变式
 - [ROADMAP.md](./ROADMAP.md) —— 里程碑与验收标准
+- [RESUME.md](./RESUME.md) —— 项目说明与简历文案（含事实卡、验证入口）
 
 ## 状态
 

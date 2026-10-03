@@ -9,6 +9,7 @@
     },
     "scripts": {
         "start": "node src/index.ts",
+        "e2e": "node scripts/e2e.ts",
         "test": "node --test test/*.test.ts",
         "typecheck": "tsc --noEmit",
         "lint": "biome check ."
