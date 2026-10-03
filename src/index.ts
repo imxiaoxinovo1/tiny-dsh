@@ -1,18 +1,31 @@
 import { Context } from '@deepseek-ai/cordis'
+import dotenv from 'dotenv'
 import * as hello from './plugins/hello.ts'
+import * as llm from './plugins/llm.ts'
 import * as sessions from './plugins/sessions.ts'
 import * as tools from './plugins/tools.ts'
+import * as deepseek from './providers/deepseek.ts'
 
 // 组合根：所有能力都通过 root.plugin() 挂载，模块之间不直接 import，
 // 跨模块通信一律走 ctx.<service>（见 ARCHITECTURE.md 设计原则 1）。
-// 按「总体实现设计」第 2 节的依赖顺序追加插件。
+// 环境变量只在这里读取，再以 config 形式传给插件。
+dotenv.config({ quiet: true })
+
 const root = new Context()
 
+// 按「总体实现设计」第 2 节的依赖顺序挂载；顺序由 inject 决定，这里只是可读性。
 await root.plugin(sessions)
 await root.plugin(tools)
+await root.plugin(llm)
 await root.plugin(hello)
 
-// D3 还没有 CLI，先用一个内联 echo 工具演示注册 → schema → 执行流水线。
+// 没有 API key 也能启动：provider 只在使用时才校验 key。
+await root.plugin(deepseek, {
+    apiKey: process.env.DEEPSEEK_API_KEY,
+    baseUrl: process.env.DEEPSEEK_BASE_URL,
+})
+
+// D4 还没有 CLI / Agent Loop，先用内联 echo 工具演示注册 → schema → 执行流水线。
 root.tools.register({
     name: 'echo',
     description: 'Echo back the given text.',
@@ -31,3 +44,11 @@ console.log(
         `${root.sessions.deriveMessages(session.id).length} projected message(s)`,
 )
 console.log(`  ctx.tools -> ${root.tools.schemas().length} tool(s), echo -> ${echo.content}`)
+console.log(
+    `  ctx.llm -> ${
+        root.llm
+            .list()
+            .map((provider) => provider.name)
+            .join(', ') || '(none)'
+    }`,
+)
