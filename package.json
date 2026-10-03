@@ -20,6 +20,7 @@
         "cordis",
         "llm"
     ],
+    "author": "imxiaoxinovo1",
     "license": "MIT",
     "dependencies": {
         "@deepseek-ai/cordis": "^4.0.1",
