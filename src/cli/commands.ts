@@ -26,10 +26,31 @@ export interface CommandPresetsPort {
     select(name: string): void
 }
 
+/** 命令用到的目标能力；未挂载时为 undefined。 */
+export interface CommandGoalView {
+    id: string
+    objective: string
+    phase: string
+    roundsStarted: number
+    maxGoalRounds: number
+    blockedReason?: { code: string; message: string }
+}
+
+export interface CommandGoalPort {
+    current(sessionId: string): CommandGoalView | undefined
+    set(sessionId: string, objective: string): CommandGoalView
+    pause(id: string): void
+    resume(id: string): void
+    complete(id: string): void
+    block(id: string, reason: { code: string; message: string }): void
+    continueRound(id: string): number
+}
+
 export interface CommandPorts {
     sessions: CommandSessionsPort
     persistence?: CommandPersistencePort
     permissionPresets?: CommandPresetsPort
+    goal?: CommandGoalPort
 }
 
 /** 当前活跃会话。 */
@@ -44,6 +65,33 @@ export interface CommandResult {
     exit?: boolean
     /** 切换到另一个会话（/resume）。 */
     sessionId?: string
+    /** 需要交给 Agent 跑一轮的文本（/continue）。 */
+    run?: string
+}
+
+function errorText(error: unknown): string {
+    return error instanceof Error ? error.message : String(error)
+}
+
+/** /continue 发给模型的续行提示。 */
+export function goalContinuationPrompt(
+    goal: { objective: string; maxGoalRounds: number },
+    round: number,
+): string {
+    return `Continue working toward the goal: ${goal.objective} (round ${round}/${goal.maxGoalRounds}).`
+}
+
+function formatGoal(goal: CommandGoalView): string {
+    const lines = [
+        `goal ${goal.id}`,
+        `  phase: ${goal.phase}`,
+        `  rounds: ${goal.roundsStarted}/${goal.maxGoalRounds}`,
+        `  objective: ${goal.objective}`,
+    ]
+    if (goal.blockedReason) {
+        lines.push(`  blocked: ${goal.blockedReason.code} - ${goal.blockedReason.message}`)
+    }
+    return lines.join('\n')
 }
 
 function formatMeta(meta: SessionMeta): string {
@@ -64,7 +112,7 @@ export async function runSlashCommand(
     switch (command) {
         case '/help':
             return {
-                output: '/help  /sessions  /resume <id>  /delete <id>  /clear  /permissions  /permission <name>  /exit',
+                output: '/help  /sessions  /resume <id>  /delete <id>  /clear  /permissions  /permission <name>  /goal [<objective>|pause|resume|complete|block <reason>]  /continue  /exit',
             }
 
         case '/exit':
@@ -118,6 +166,66 @@ export async function runSlashCommand(
                 return { output: error instanceof Error ? error.message : String(error) }
             }
             return { output: `permission -> ${presets.current()}` }
+        }
+
+        case '/goal': {
+            const goalPort = ports.goal
+            if (!goalPort) return { output: 'goals are not enabled' }
+            const current = goalPort.current(state.sessionId)
+
+            if (!argument) {
+                return { output: current ? formatGoal(current) : 'no goal for this session' }
+            }
+
+            if (argument === 'pause' || argument === 'resume' || argument === 'complete') {
+                if (!current) return { output: 'no goal for this session' }
+                try {
+                    if (argument === 'pause') goalPort.pause(current.id)
+                    else if (argument === 'resume') goalPort.resume(current.id)
+                    else goalPort.complete(current.id)
+                } catch (error) {
+                    return { output: errorText(error) }
+                }
+                return {
+                    output: `goal -> ${goalPort.current(state.sessionId)?.phase ?? 'unknown'}`,
+                }
+            }
+
+            if (argument === 'block') {
+                if (!current) return { output: 'no goal for this session' }
+                const reason = parts.slice(2).join(' ') || 'blocked by user'
+                try {
+                    goalPort.block(current.id, { code: 'user-blocked', message: reason })
+                } catch (error) {
+                    return { output: errorText(error) }
+                }
+                return { output: 'goal -> blocked' }
+            }
+
+            // 其余情况把整行当成 objective。
+            const objective = line.trim().slice('/goal'.length).trim()
+            const created = goalPort.set(state.sessionId, objective)
+            return {
+                output: `goal set: ${created.objective} (max ${created.maxGoalRounds} rounds)`,
+            }
+        }
+
+        case '/continue': {
+            const goalPort = ports.goal
+            if (!goalPort) return { output: 'goals are not enabled' }
+            const current = goalPort.current(state.sessionId)
+            if (!current) return { output: 'no goal for this session; use /goal <objective>' }
+
+            let round: number
+            try {
+                round = goalPort.continueRound(current.id)
+            } catch (error) {
+                return { output: errorText(error) }
+            }
+            return {
+                output: `round ${round}/${current.maxGoalRounds} started`,
+                run: goalContinuationPrompt(current, round),
+            }
         }
 
         default:

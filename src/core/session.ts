@@ -34,6 +34,7 @@ export type SessionEventType =
     | 'compaction/start'
     | 'compaction/summary'
     | 'compaction/end'
+    | 'goal/change'
     | (string & {})
 
 /**

@@ -313,17 +313,23 @@ interface CompactionService {
 
 // ---------- E4 ctx.goal ----------
 interface GoalService {
-    set(objective: string, options?: { maxRounds?: number }): Goal
+    set(sessionId: string, objective: string, options?: { maxGoalRounds?: number }): Goal
     get(id: string): Goal | undefined
-    pause(id: string): void
-    resume(id: string): void
-    complete(id: string): void
-    block(id: string, reason: string): void
-    continue(id: string): Promise<Round>
+    current(sessionId: string): Goal | undefined
+    pause(id: string): Goal
+    resume(id: string): Goal
+    complete(id: string): Goal
+    block(id: string, reason: GoalBlockReason): Goal
+    canContinue(id: string): boolean
+    nextRound(id: string): number | undefined   // 自动续行；到 Round 上限返回 undefined
+    continueRound(id: string): number           // /continue；不满足条件抛错
+    restore(sessionId: string): Goal | undefined // 从 goal/change 事件折出快照
 }
+// phase: active | paused | blocked | complete；blockedReason 只在 blocked 时存在。
+// 目标是持久的：每次变更写一条 goal/change 事件（含完整快照），E1 把它落盘。
 ```
 
-命名约定：Service 名用小写单数（`sessions`、`tools`、`llm`）；事件名用 `domain/action`（`user/message`、`assistant/tool_calls`、`tool/result`、`compaction/start`）。
+命名约定：Service 名用小写单数（`sessions`、`tools`、`llm`）；事件名用 `domain/action`（`user/message`、`assistant/tool_calls`、`tool/result`、`compaction/start`、`goal/change`）。
 
 ### 4. 一次 run 的数据流
 
@@ -397,7 +403,7 @@ cli/agents.run(input)
 | E1 | `src/core/persistence.ts`、`src/providers/jsonl-persistence.ts`、`src/plugins/persistence.ts`、`src/cli/commands.ts`、`test/persistence.test.ts` | `ctx.sessions` → `ctx.persistence` |
 | E2 | `src/core/token.ts`、`src/core/compaction.ts`、`src/plugins/{token-meter,compaction}.ts`、`test/compaction.test.ts` | `ctx.sessions`、`ctx.tokenMeter` |
 | E3 | `src/core/permission-preset.ts`、`src/plugins/permission-presets.ts`、`test/permissions.test.ts` | `ctx.sandbox`、`ctx.approval` |
-| E4 | `src/core/goal.ts`、`src/plugins/goal.ts` | `ctx.sessions` |
+| E4 | `src/core/goal.ts`、`src/plugins/goal.ts`、`test/goal.test.ts` | `ctx.sessions` |
 
 ### 10. 架构决策记录（ADR）
 

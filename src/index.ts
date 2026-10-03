@@ -5,6 +5,7 @@ import * as agents from './plugins/agents.ts'
 import * as approval from './plugins/approval.ts'
 import * as cli from './plugins/cli.ts'
 import * as compaction from './plugins/compaction.ts'
+import * as goal from './plugins/goal.ts'
 import * as hello from './plugins/hello.ts'
 import * as llm from './plugins/llm.ts'
 import * as permissionPresets from './plugins/permission-presets.ts'
@@ -30,10 +31,12 @@ const model = process.env.TINY_DSH_MODEL ?? 'deepseek/deepseek-v4-flash'
 const sessionsDir = process.env.TINY_DSH_SESSIONS ?? 'sessions'
 const maxTokens = Number(process.env.TINY_DSH_MAX_TOKENS ?? '') || 8000
 const permission = process.env.TINY_DSH_PERMISSION ?? 'workspace-write'
+const maxGoalRounds = Number(process.env.TINY_DSH_MAX_GOAL_ROUNDS ?? '') || 3
 const root = new Context()
 
 // 核心 seam：加载顺序由 inject 决定，这里只是可读性。
 await root.plugin(sessions)
+await root.plugin(goal, { maxGoalRounds })
 await root.plugin(persistence, { directory: sessionsDir })
 await root.plugin(systemPrompt)
 await root.plugin(tokenMeter)
@@ -92,6 +95,7 @@ console.log(
 console.log(
     `  ctx.tokenMeter / ctx.compaction -> ~${root.tokenMeter.count(prompt)} tokens now, threshold ${root.compaction.maxTokens}`,
 )
+console.log(`  ctx.goal -> ${root.goal.list().length} goal(s), round cap ${maxGoalRounds}`)
 
 // 确认 boot session 已落盘。
 await root.persistence.flush()
