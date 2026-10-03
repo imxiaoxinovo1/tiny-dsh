@@ -47,4 +47,5 @@ D2：Session 事件日志 + `deriveMessages()` 投影，见 [`src/core/session.t
 D3：工具注册表 + OpenAI function schema + 统一执行结果，见 [`src/core/tool.ts`](./src/core/tool.ts)。
 D4：LLM Provider 路由 + SSE 解析 + tool_calls 增量拼装，见 [`src/core/llm.ts`](./src/core/llm.ts)。
 D5：Agent 与 Agent Loop（model → tool → model），见 [`src/core/loop.ts`](./src/core/loop.ts)。
-D6：System Prompt 的 section / context 组装，见 [`src/core/prompt.ts`](./src/core/prompt.ts)。实现进度见 [ROADMAP.md](./ROADMAP.md)。
+D6：System Prompt 的 section / context 组装，见 [`src/core/prompt.ts`](./src/core/prompt.ts)。
+D7：真实文件 / shell 工具、workspace 路径闸门、审批与 CLI，见 [`src/core/path.ts`](./src/core/path.ts)、[`src/plugins/approval.ts`](./src/plugins/approval.ts)。实现进度见 [ROADMAP.md](./ROADMAP.md)。

@@ -358,7 +358,7 @@ cli/agents.run(input)
 | D4 | `src/core/llm.ts`、`src/plugins/llm.ts`、`src/providers/deepseek.ts`、`test/llm.test.ts` | `ctx.llm` |
 | D5 | `src/core/agent.ts`、`src/core/loop.ts`、`src/plugins/agents.ts`、`src/plugins/agent-loop.ts`、`test/loop.test.ts` | `ctx.sessions`、`ctx.tools`、`ctx.llm`、`ctx.systemPrompt` |
 | D6 | `src/core/prompt.ts`、`src/plugins/system-prompt.ts`、`src/plugins/runtime-context.ts`、`test/prompt.test.ts` | `ctx.systemPrompt` |
-| D7 | `src/core/path.ts`、`src/tools/*.ts`、`src/plugins/sandbox.ts`、`src/plugins/approval.ts`、`src/cli/*.ts` | `ctx.sandbox`、`ctx.approval` |
+| D7 | `src/core/path.ts`、`src/tools/{guard,files,search,shell}.ts`、`src/plugins/{sandbox,approval,cli}.ts`、`src/cli/{answerer,repl}.ts`、`test/{path,tools}.test.ts` | `ctx.sandbox`、`ctx.approval` |
 | E1 | `src/providers/jsonl-persistence.ts`、`src/plugins/persistence.ts` | `ctx.sessions` |
 | E2 | `src/plugins/token-meter.ts`、`src/providers/basic-compaction.ts`、`src/plugins/compaction.ts` | `ctx.sessions`、`ctx.tokenMeter` |
 | E3 | `src/core/permission-preset.ts`、`src/plugins/permission-presets.ts` | `ctx.sandbox`、`ctx.approval` |

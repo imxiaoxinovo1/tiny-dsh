@@ -11,10 +11,41 @@ import type { ContentBlock, JsonSchema, ToolCall } from './message.ts'
  */
 
 /** 调用方提供的执行上下文；D7 会补上 approval / sandbox。 */
+/** sandbox 模式；与 DSH 的 permission preset 对齐。 */
+export type SandboxMode = 'read-only' | 'workspace-write' | 'danger-full-access'
+
+/** 一次审批请求。 */
+export interface ApprovalRequest {
+    /** 发起审批的工具名。 */
+    tool: string
+    /** 人类可读的原因。 */
+    reason: string
+    /** 附加信息（命令、目标路径……）。 */
+    detail?: string
+}
+
+/** 审批 seam 的端口形状；`plugins/approval.ts` 实现它。 */
+export interface ApprovalPort {
+    request(request: ApprovalRequest): Promise<'allow' | 'deny'>
+}
+
+/** sandbox seam 的端口形状；`plugins/sandbox.ts` 实现它。 */
+export interface SandboxPort {
+    readonly mode: SandboxMode
+    /** workspace 根目录。 */
+    readonly workspace: string
+    resolvePath(input: string, intent: 'read' | 'write'): Promise<string>
+    checkCommand(command: string): Promise<void>
+}
+
 export interface ToolExecutionContext {
     sessionId?: string
     cwd?: string
     signal?: AbortSignal
+    /** 审批通道；缺失时写操作必须 fail closed。 */
+    approval?: ApprovalPort
+    /** 路径闸门；缺失时文件工具必须 fail closed。 */
+    sandbox?: SandboxPort
 }
 
 /** 规范化后交给工具实现的上下文：signal 一定有值。 */
@@ -156,6 +187,8 @@ export class ToolRegistry {
             sessionId: context.sessionId,
             cwd: context.cwd,
             signal,
+            approval: context.approval,
+            sandbox: context.sandbox,
         }
 
         const tool = this.#tools.get(call.name)

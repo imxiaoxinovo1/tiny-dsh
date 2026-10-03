@@ -1,5 +1,5 @@
 import { type Context, Service } from '@deepseek-ai/cordis'
-import { AgentLoopRuntime, type RunParams, type RunResult } from '../core/loop.ts'
+import { AgentLoopRuntime, type RunParams, type RunResult, type ToolPorts } from '../core/loop.ts'
 
 /**
  * D5：把 `AgentLoopRuntime` 包成 `ctx.agentLoop`。
@@ -34,6 +34,11 @@ export class AgentLoopService extends Service {
                 const prompt = ctx.get('systemPrompt') as SystemPromptLike | undefined
                 return prompt?.assemble ? await prompt.assemble() : ''
             },
+            // 审批 / sandbox 都是可卸载插件，每次批次重新探测。
+            ports: (): ToolPorts => ({
+                approval: ctx.get('approval'),
+                sandbox: ctx.get('sandbox'),
+            }),
         })
     }
 

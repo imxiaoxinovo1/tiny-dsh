@@ -1,7 +1,14 @@
 import type { LlmRuntime, ModelResponse } from './llm.ts'
 import type { ToolCall } from './message.ts'
 import type { SessionStore } from './session.ts'
-import { abortError, isAbortError, type ToolRegistry, type ToolResult } from './tool.ts'
+import {
+    type ApprovalPort,
+    abortError,
+    isAbortError,
+    type SandboxPort,
+    type ToolRegistry,
+    type ToolResult,
+} from './tool.ts'
 
 /**
  * D5：model → tool → model 的推进器。纯逻辑，不 import cordis。
@@ -48,6 +55,14 @@ export interface LoopDeps {
     llm: LlmRuntime
     /** 每一步重新调用：时间 / cwd 必须保持新鲜，不是模型知识。 */
     system?: () => string | Promise<string>
+    /** 每次工具批次重新解析：审批 / sandbox 都是可卸载的插件。 */
+    ports?: () => ToolPorts
+}
+
+/** 传给工具执行的端口；两个能力都可选，缺失时工具自己 fail closed。 */
+export interface ToolPorts {
+    approval?: ApprovalPort
+    sandbox?: SandboxPort
 }
 
 function cancelledResult(call: ToolCall): ToolResult {
@@ -142,9 +157,11 @@ export class AgentLoopRuntime {
                 result = cancelledResult(call)
             } else {
                 try {
+                    const ports = this.#deps.ports?.() ?? {}
                     result = await tools.execute(call, {
                         sessionId: params.sessionId,
                         signal: params.signal,
+                        ...ports,
                     })
                 } catch (error) {
                     if (!isAbortError(error)) throw error
