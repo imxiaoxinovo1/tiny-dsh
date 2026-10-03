@@ -230,7 +230,7 @@ interface Agent {
 
 interface RunResult {
     sessionId: string
-    stopReason: 'assistant' | 'cancelled' | 'maxRounds' | 'error'
+    stopReason: 'assistant' | 'maxRounds'   // 取消先补齐事件日志，再抛 AbortError
     rounds: number
 }
 

@@ -70,9 +70,17 @@ export function blocksToText(blocks: readonly ContentBlock[]): string {
         .join('\n')
 }
 
-/** 取消是控制流而不是工具错误：只有它穿透执行流水线。 */
+/**
+ * 取消是控制流而不是工具错误：只有它穿透执行流水线。
+ *
+ * 不要求 `instanceof Error`：fetch 的 abort 抛的是 DOMException，`name` 才是判据。
+ */
 export function isAbortError(error: unknown): boolean {
-    return error instanceof Error && error.name === 'AbortError'
+    return (
+        typeof error === 'object' &&
+        error !== null &&
+        (error as { name?: unknown }).name === 'AbortError'
+    )
 }
 
 /** 构造一个 AbortError。 */

@@ -45,4 +45,5 @@ pnpm lint               # biome check .
 D1：cordis 骨架（Context / Plugin / Service / `ctx.effect()` / disposer），见 [`src/plugins/hello.ts`](./src/plugins/hello.ts)。
 D2：Session 事件日志 + `deriveMessages()` 投影，见 [`src/core/session.ts`](./src/core/session.ts)。
 D3：工具注册表 + OpenAI function schema + 统一执行结果，见 [`src/core/tool.ts`](./src/core/tool.ts)。
-D4：LLM Provider 路由 + SSE 解析 + tool_calls 增量拼装，见 [`src/core/llm.ts`](./src/core/llm.ts)。实现进度见 [ROADMAP.md](./ROADMAP.md)。
+D4：LLM Provider 路由 + SSE 解析 + tool_calls 增量拼装，见 [`src/core/llm.ts`](./src/core/llm.ts)。
+D5：Agent 与 Agent Loop（model → tool → model），见 [`src/core/loop.ts`](./src/core/loop.ts)。实现进度见 [ROADMAP.md](./ROADMAP.md)。

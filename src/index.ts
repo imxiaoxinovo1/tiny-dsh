@@ -1,5 +1,7 @@
 import { Context } from '@deepseek-ai/cordis'
 import dotenv from 'dotenv'
+import * as agentLoop from './plugins/agent-loop.ts'
+import * as agents from './plugins/agents.ts'
 import * as hello from './plugins/hello.ts'
 import * as llm from './plugins/llm.ts'
 import * as sessions from './plugins/sessions.ts'
@@ -17,6 +19,8 @@ const root = new Context()
 await root.plugin(sessions)
 await root.plugin(tools)
 await root.plugin(llm)
+await root.plugin(agentLoop)
+await root.plugin(agents)
 await root.plugin(hello)
 
 // 没有 API key 也能启动：provider 只在使用时才校验 key。
@@ -44,6 +48,7 @@ console.log(
         `${root.sessions.deriveMessages(session.id).length} projected message(s)`,
 )
 console.log(`  ctx.tools -> ${root.tools.schemas().length} tool(s), echo -> ${echo.content}`)
+console.log(`  ctx.agents -> ${root.agents.list().length} agent(s), agentLoop ready`)
 console.log(
     `  ctx.llm -> ${
         root.llm
