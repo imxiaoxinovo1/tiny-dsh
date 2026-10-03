@@ -42,4 +42,5 @@ pnpm lint               # biome check .
 
 ## 状态
 
-D1：cordis 骨架（Context / Plugin / Service / `ctx.effect()` / disposer），见 [`src/plugins/hello.ts`](./src/plugins/hello.ts)。实现进度见 [ROADMAP.md](./ROADMAP.md)。
+D1：cordis 骨架（Context / Plugin / Service / `ctx.effect()` / disposer），见 [`src/plugins/hello.ts`](./src/plugins/hello.ts)。
+D2：Session 事件日志 + `deriveMessages()` 投影，见 [`src/core/session.ts`](./src/core/session.ts)。实现进度见 [ROADMAP.md](./ROADMAP.md)。
