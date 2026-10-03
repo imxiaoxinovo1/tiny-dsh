@@ -71,9 +71,10 @@ pnpm typecheck     # tsc --noEmit
 pnpm lint          # biome check .
 pnpm start         # 组合根：打印就绪与服务清单
 
-# 真实端到端（需要 key）
-cp .env.example .env   # 填 DEEPSEEK_API_KEY
-pnpm run e2e           # 一次带工具往返的真实 run
+# 真实端到端（需要 .env 里的 DEEPSEEK_API_KEY）
+pnpm run e2e                                    # 一次带工具往返的 run
+pnpm run e2e "创建 note.txt 并读回来"            # 写路径：闸门 + 审批 + read/write
+$env:TINY_DSH_MAX_TOKENS=10; $env:TINY_DSH_E2E_TURNS=6; pnpm run e2e "Reply OK"   # 强制真实压缩
 ```
 
 设计文档见 [ARCHITECTURE.md](./ARCHITECTURE.md)；里程碑与验收标准见 [ROADMAP.md](./ROADMAP.md)。

@@ -3,12 +3,14 @@ import dotenv from 'dotenv'
 import * as agentLoop from '../src/plugins/agent-loop.ts'
 import * as agents from '../src/plugins/agents.ts'
 import * as approval from '../src/plugins/approval.ts'
+import * as compaction from '../src/plugins/compaction.ts'
 import * as llm from '../src/plugins/llm.ts'
 import * as permissionPresets from '../src/plugins/permission-presets.ts'
 import * as runtimeContext from '../src/plugins/runtime-context.ts'
 import * as sandbox from '../src/plugins/sandbox.ts'
 import * as sessions from '../src/plugins/sessions.ts'
 import * as systemPrompt from '../src/plugins/system-prompt.ts'
+import * as tokenMeter from '../src/plugins/token-meter.ts'
 import * as tools from '../src/plugins/tools.ts'
 import * as deepseek from '../src/providers/deepseek.ts'
 import * as files from '../src/tools/files.ts'
@@ -31,13 +33,18 @@ const model = process.env.TINY_DSH_MODEL ?? 'deepseek/deepseek-v4-flash'
 const prompt =
     process.argv.slice(2).join(' ') ||
     'List the TypeScript files under src/core with the glob tool, then reply with just the file names.'
+// 可选：TINY_DSH_MAX_TOKENS 压到很小 + TINY_DSH_E2E_TURNS 多轮，就能真实触发一次压缩摘要。
+const maxTokens = Number(process.env.TINY_DSH_MAX_TOKENS ?? '') || 8000
+const turns = Number(process.env.TINY_DSH_E2E_TURNS ?? '') || 1
 
 const root = new Context()
 
 await root.plugin(sessions)
 await root.plugin(systemPrompt)
+await root.plugin(tokenMeter)
 await root.plugin(tools)
 await root.plugin(llm)
+await root.plugin(compaction, { model, maxTokens })
 await root.plugin(approval)
 await root.plugin(sandbox, { workspace })
 await root.plugin(permissionPresets, { defaultPreset: 'workspace-write' })
@@ -59,17 +66,27 @@ const agent = root.agents.create({ sessionId: session.id, model })
 
 console.log(`model=${model}`)
 console.log(`workspace=${workspace}`)
-console.log(`prompt: ${prompt}\n`)
+console.log(`prompt: ${prompt}`)
+console.log(`turns=${turns} compactionThreshold=${maxTokens}\n`)
 
 try {
-    const result = await agent.run(prompt, {
-        onReasoning: (chunk) => process.stdout.write(`\x1b[2m${chunk}\x1b[0m`),
-        onContent: (chunk) => process.stdout.write(chunk),
-    })
+    let stopReason = 'unknown'
+    let rounds = 0
+    for (let turn = 1; turn <= turns; turn++) {
+        const text = turns === 1 ? prompt : `${prompt} (turn ${turn}/${turns})`
+        if (turns > 1) process.stdout.write(`\n--- turn ${turn}/${turns} ---\n`)
+        const result = await agent.run(text, {
+            onReasoning: (chunk) => process.stdout.write(`\x1b[2m${chunk}\x1b[0m`),
+            onContent: (chunk) => process.stdout.write(chunk),
+        })
+        stopReason = result.stopReason
+        rounds += result.rounds
+    }
+
     const toolResults = session.events.filter((event) => event.type === 'tool/result').length
-    console.log(
-        `\n\n[${result.stopReason} · ${result.rounds} round(s) · ${toolResults} tool call(s)]`,
-    )
+    const checkpoints = session.events.filter((event) => event.type === 'compaction/summary').length
+    console.log(`\n\n[${stopReason} · ${rounds} round(s) · ${toolResults} tool call(s)]`)
+    console.log(`[compaction: ${checkpoints} checkpoint(s), threshold ${maxTokens}]`)
     const messages = root.sessions.deriveMessages(session.id)
     console.log(
         `[projected ${messages.length} message(s), ~${root.tokenMeter.countMessages(messages)} tokens]`,
