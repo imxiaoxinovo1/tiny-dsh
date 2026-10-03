@@ -4,6 +4,7 @@ import * as agentLoop from './plugins/agent-loop.ts'
 import * as agents from './plugins/agents.ts'
 import * as approval from './plugins/approval.ts'
 import * as cli from './plugins/cli.ts'
+import * as compaction from './plugins/compaction.ts'
 import * as hello from './plugins/hello.ts'
 import * as llm from './plugins/llm.ts'
 import * as persistence from './plugins/persistence.ts'
@@ -11,6 +12,7 @@ import * as runtimeContext from './plugins/runtime-context.ts'
 import * as sandbox from './plugins/sandbox.ts'
 import * as sessions from './plugins/sessions.ts'
 import * as systemPrompt from './plugins/system-prompt.ts'
+import * as tokenMeter from './plugins/token-meter.ts'
 import * as tools from './plugins/tools.ts'
 import * as deepseek from './providers/deepseek.ts'
 import * as files from './tools/files.ts'
@@ -25,14 +27,17 @@ dotenv.config({ quiet: true })
 const workspace = process.env.TINY_DSH_WORKSPACE ?? process.cwd()
 const model = process.env.TINY_DSH_MODEL ?? 'deepseek/deepseek-v4-flash'
 const sessionsDir = process.env.TINY_DSH_SESSIONS ?? 'sessions'
+const maxTokens = Number(process.env.TINY_DSH_MAX_TOKENS ?? '') || 8000
 const root = new Context()
 
 // 核心 seam：加载顺序由 inject 决定，这里只是可读性。
 await root.plugin(sessions)
 await root.plugin(persistence, { directory: sessionsDir })
 await root.plugin(systemPrompt)
+await root.plugin(tokenMeter)
 await root.plugin(tools)
 await root.plugin(llm)
+await root.plugin(compaction, { maxTokens, model })
 await root.plugin(approval)
 await root.plugin(sandbox, { workspace })
 await root.plugin(agentLoop)
@@ -78,6 +83,9 @@ console.log(
     `  ctx.systemPrompt -> ${root.systemPrompt.list().length} fragment(s), ${prompt.length} chars`,
 )
 console.log(`  ctx.sandbox -> ${root.sandbox.mode} @ ${root.sandbox.workspace}`)
+console.log(
+    `  ctx.tokenMeter / ctx.compaction -> ~${root.tokenMeter.count(prompt)} tokens now, threshold ${root.compaction.maxTokens}`,
+)
 
 // 确认 boot session 已落盘。
 await root.persistence.flush()

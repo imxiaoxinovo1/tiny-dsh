@@ -38,7 +38,7 @@ src/
     loop.ts         Agent Loop
     path.ts         workspace 路径闸门
   plugins/          把 core 包成 cordis Service，并负责接线
-  providers/        可替换实现：deepseek / jsonl-persistence / basic-compaction
+  providers/        可替换实现：deepseek / jsonl-persistence
   tools/            read_file write_file edit_file glob grep shell
   cli/              REPL、斜杠命令、渲染、审批 answerer
 test/               每个 runtime 一个行为测试文件
@@ -284,8 +284,12 @@ interface TokenMeterService {
 }
 
 interface CompactionService {
+    prepare(sessionId: string): Promise<ChatMessage[]>  // 剪枝 + 必要时摘要后的消息
     maybeCompact(sessionId: string): Promise<boolean>   // true 表示写入了一次压缩检查点
+    readonly maxTokens: number
 }
+// 链路：token 计量 → 大工具结果 pruner 截断并重新计量 → 仍超阈值则摘要旧区间。
+// 检查点是 start → summary → user/message(surfaceOp) → end；摘要失败不写 end。
 
 // ---------- E4 ctx.goal ----------
 interface GoalService {
@@ -371,7 +375,7 @@ cli/agents.run(input)
 | D6 | `src/core/prompt.ts`、`src/plugins/system-prompt.ts`、`src/plugins/runtime-context.ts`、`test/prompt.test.ts` | `ctx.systemPrompt` |
 | D7 | `src/core/path.ts`、`src/tools/{guard,files,search,shell}.ts`、`src/plugins/{sandbox,approval,cli}.ts`、`src/cli/{answerer,repl}.ts`、`test/{path,tools}.test.ts` | `ctx.sandbox`、`ctx.approval` |
 | E1 | `src/core/persistence.ts`、`src/providers/jsonl-persistence.ts`、`src/plugins/persistence.ts`、`src/cli/commands.ts`、`test/persistence.test.ts` | `ctx.sessions` → `ctx.persistence` |
-| E2 | `src/plugins/token-meter.ts`、`src/providers/basic-compaction.ts`、`src/plugins/compaction.ts` | `ctx.sessions`、`ctx.tokenMeter` |
+| E2 | `src/core/token.ts`、`src/core/compaction.ts`、`src/plugins/{token-meter,compaction}.ts`、`test/compaction.test.ts` | `ctx.sessions`、`ctx.tokenMeter` |
 | E3 | `src/core/permission-preset.ts`、`src/plugins/permission-presets.ts` | `ctx.sandbox`、`ctx.approval` |
 | E4 | `src/core/goal.ts`、`src/plugins/goal.ts` | `ctx.sessions` |
 

@@ -1,5 +1,5 @@
 import type { LlmRuntime, ModelResponse } from './llm.ts'
-import type { ToolCall } from './message.ts'
+import type { ChatMessage, ToolCall } from './message.ts'
 import type { SessionStore } from './session.ts'
 import {
     type ApprovalPort,
@@ -55,6 +55,8 @@ export interface LoopDeps {
     llm: LlmRuntime
     /** 每一步重新调用：时间 / cwd 必须保持新鲜，不是模型知识。 */
     system?: () => string | Promise<string>
+    /** 上下文压缩（可选能力）；提供时由它决定发给模型的消息。 */
+    compaction?: () => CompactionPort | undefined
     /** 每次工具批次重新解析：审批 / sandbox 都是可卸载的插件。 */
     ports?: () => ToolPorts
 }
@@ -63,6 +65,11 @@ export interface LoopDeps {
 export interface ToolPorts {
     approval?: ApprovalPort
     sandbox?: SandboxPort
+}
+
+/** 压缩端口：由它生产最终发给模型的消息（含剪枝 / 摘要）。 */
+export interface CompactionPort {
+    prepare(sessionId: string): Promise<ChatMessage[]>
 }
 
 function cancelledResult(call: ToolCall): ToolResult {
@@ -100,10 +107,14 @@ export class AgentLoopRuntime {
             rounds += 1
 
             const system = this.#deps.system ? await this.#deps.system() : ''
+            const compaction = this.#deps.compaction?.()
+            const messages = compaction
+                ? await compaction.prepare(params.sessionId)
+                : sessions.deriveMessages(params.sessionId)
             const response = await this.#deps.llm.complete({
                 model: params.model,
                 system,
-                messages: sessions.deriveMessages(params.sessionId),
+                messages,
                 tools: this.#deps.tools.schemas(),
                 signal: params.signal,
                 onContent: params.onContent,

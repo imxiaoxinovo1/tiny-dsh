@@ -31,7 +31,40 @@ export type SessionEventType =
     | 'assistant/message'
     | 'assistant/tool_calls'
     | 'tool/result'
+    | 'compaction/start'
+    | 'compaction/summary'
+    | 'compaction/end'
     | (string & {})
+
+/**
+ * surface 遮蔽：投影时把 `[start, end]`（按 seq，闭区间）的事件替换成当前这条消息。
+ *
+ * 事件只追加、不改写 —— 压缩不是删历史，而是让新消息在投影里遮住旧区间。
+ */
+export interface SurfaceOp {
+    op: 'replace'
+    start: number
+    end: number
+}
+
+/** `compaction/start` 事件的数据。 */
+export interface CompactionStartData {
+    id: string
+    start: number
+    end: number
+}
+
+/** `compaction/summary` 事件的数据。 */
+export interface CompactionSummaryData extends CompactionStartData {
+    content: string
+}
+
+/** `compaction/end` 事件的数据；token 统计在这里收口。 */
+export interface CompactionEndData {
+    id: string
+    tokensBefore?: number
+    tokensAfter?: number
+}
 
 /** 会话元数据：可列表化，不含事件体。 */
 export interface SessionMeta {
@@ -51,6 +84,8 @@ export interface SessionHeader {
 /** `user/message` 事件的数据。 */
 export interface UserMessageData {
     content: string
+    /** 带 surfaceOp 时，这条消息在投影里替换旧区间（压缩检查点）。 */
+    surfaceOp?: SurfaceOp
 }
 
 /** `assistant/message` 事件的数据。 */
@@ -84,6 +119,27 @@ export function serializeToolArguments(value: unknown): string {
     return JSON.stringify(value ?? {})
 }
 
+/** 从事件 data 里读出一个合法的 surfaceOp。 */
+function readSurfaceOp(data: unknown): SurfaceOp | undefined {
+    if (typeof data !== 'object' || data === null) return undefined
+    const op = (data as { surfaceOp?: unknown }).surfaceOp
+    if (typeof op !== 'object' || op === null) return undefined
+    const candidate = op as Partial<SurfaceOp>
+    if (candidate.op !== 'replace') return undefined
+    if (typeof candidate.start !== 'number' || typeof candidate.end !== 'number') {
+        return undefined
+    }
+    return { op: 'replace', start: candidate.start, end: candidate.end }
+}
+
+/** 一条 surfaceOp 替换：在区间起点插入 message，并隐藏整个区间。 */
+interface SurfaceReplacement {
+    range: SurfaceOp
+    message: ChatMessage
+    /** 产生这条替换的事件 seq（折叠到它时不再重复投影）。 */
+    sourceSeq: number
+}
+
 /**
  * 把事件日志折叠成模型能消费的消息序列。
  *
@@ -91,9 +147,46 @@ export function serializeToolArguments(value: unknown): string {
  * `session/reset` 丢弃此前累积的消息，对应「清空会话」，但事件本身仍留在日志里。
  */
 export function deriveMessages(events: readonly SessionEvent[]): ChatMessage[] {
-    const messages: ChatMessage[] = []
+    // 最后一次 reset 之前的事件在投影里已经不存在。
+    let start = 0
+    for (let i = 0; i < events.length; i++) {
+        if (events[i]?.type === 'session/reset') start = i + 1
+    }
 
-    for (const event of events) {
+    // 第一遍收集 surfaceOp 替换：区间指向**过去**的 seq，而且替换消息要在
+    // 区间起点插入（不能等它追加到日志末尾），所以必须先扫一遍。
+    const replacements: SurfaceReplacement[] = []
+    for (let i = start; i < events.length; i++) {
+        const event = events[i]
+        if (!event) continue
+        const op = readSurfaceOp(event.data)
+        if (!op) continue
+        const data = (event.data ?? {}) as Partial<UserMessageData>
+        replacements.push({
+            range: op,
+            message: { role: 'user', content: data.content ?? '' },
+            sourceSeq: event.seq,
+        })
+    }
+    const isHidden = (seq: number) =>
+        replacements.some(
+            (replacement) => seq >= replacement.range.start && seq <= replacement.range.end,
+        )
+    const emitted = new Set<number>()
+    const consumed = new Set<number>(replacements.map((replacement) => replacement.sourceSeq))
+
+    const messages: ChatMessage[] = []
+    for (let i = start; i < events.length; i++) {
+        const event = events[i]
+        if (!event) continue
+        // 到达区间起点时插入替换消息（只插一次）。
+        for (const replacement of replacements) {
+            if (replacement.range.start === event.seq && !emitted.has(event.seq)) {
+                emitted.add(event.seq)
+                messages.push(replacement.message)
+            }
+        }
+        if (consumed.has(event.seq) || isHidden(event.seq)) continue
         switch (event.type) {
             case 'session/reset': {
                 messages.length = 0

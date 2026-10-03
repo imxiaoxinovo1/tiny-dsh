@@ -39,6 +39,8 @@ export class AgentLoopService extends Service {
                 approval: ctx.get('approval'),
                 sandbox: ctx.get('sandbox'),
             }),
+            // 压缩同样是可选能力：没挂 ctx.compaction 就走纯投影。
+            compaction: () => ctx.get('compaction'),
         })
     }
 
