@@ -1,4 +1,9 @@
 import { randomUUID } from 'node:crypto'
+import type { ChatMessage, ToolCall } from './message.ts'
+
+// 这些类型属于「模型消息」而不是「会话」；session 只是它们的生产者与消费者，
+// 所以从 message.ts 再导出，调用方仍可只依赖 core/session.ts。
+export type { ChatMessage, ChatToolCall, ContentBlock, JsonSchema, ToolCall } from './message.ts'
 
 /**
  * D2：Session 事件日志 + `deriveMessages()` 投影。
@@ -41,35 +46,6 @@ export interface SessionHeader {
     id: string
     createdAt: string
     title?: string
-}
-
-/** 模型侧的一个 tool_call：`arguments` 是**已解析**的值。 */
-export interface ToolCall {
-    id: string
-    name: string
-    arguments: unknown
-}
-
-/** OpenAI Chat Completions 兼容的 tool_call：`arguments` 是 JSON 字符串。 */
-export interface ChatToolCall {
-    id: string
-    type: 'function'
-    function: { name: string; arguments: string }
-}
-
-/**
- * OpenAI Chat Completions 兼容的请求消息。
- *
- * 用 wire 形状（snake_case）而不是内部驼峰，是为了让 D4 的 provider 几乎零转换：
- * `deriveMessages()` 的输出可以直接塞进 request body。
- */
-export interface ChatMessage {
-    role: 'system' | 'user' | 'assistant' | 'tool'
-    content: string | null
-    /** 只在与 assistant 消息同时存在时投影，供展示 / E2 计量。 */
-    reasoning_content?: string
-    tool_calls?: ChatToolCall[]
-    tool_call_id?: string
 }
 
 /** `user/message` 事件的数据。 */

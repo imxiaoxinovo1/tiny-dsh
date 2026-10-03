@@ -348,7 +348,7 @@ cli/agents.run(input)
 |---|---|---|
 | D1 | `src/plugins/hello.ts`、`test/plugin.test.ts` | — |
 | D2 | `src/core/session.ts`、`src/plugins/sessions.ts`、`test/session.test.ts` | — |
-| D3 | `src/core/tool.ts`、`src/plugins/tools.ts`、`test/tool.test.ts` | `ctx.tools` |
+| D3 | `src/core/message.ts`（共享消息类型）、`src/core/tool.ts`、`src/plugins/tools.ts`、`test/tool.test.ts` | `ctx.tools` |
 | D4 | `src/core/llm.ts`、`src/providers/deepseek.ts`、`test/llm.test.ts` | `ctx.llm` |
 | D5 | `src/core/agent.ts`、`src/core/loop.ts`、`src/plugins/agents.ts`、`src/plugins/agent-loop.ts`、`test/loop.test.ts` | `ctx.sessions`、`ctx.tools`、`ctx.llm`、`ctx.systemPrompt` |
 | D6 | `src/core/prompt.ts`、`src/plugins/system-prompt.ts`、`src/plugins/runtime-context.ts`、`test/prompt.test.ts` | `ctx.systemPrompt` |
