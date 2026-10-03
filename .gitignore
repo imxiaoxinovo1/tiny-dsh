@@ -3,3 +3,6 @@ node_modules/
 .DS_Store
 *.log
 sessions/
+
+# 本地私有笔记（例如简历文案）
+*.local.md

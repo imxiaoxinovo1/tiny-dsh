@@ -1,33 +1,18 @@
-# tiny-dsh · 简历与项目说明
+# tiny-dsh · 项目说明与设计要点
 
-> 这份文档是「可以直接抄进简历的文案 + 面试时能对上的事实」。
-> 所有数字与断言都可以在仓库里验证，验证入口见文末。
+> 面向读者的项目笔记：事实、设计取舍、已知限制、验证入口。
+> 所有数字与断言都可以在仓库里验证。
 
-## 简历（可直接复制）
-
-**tiny-dsh · 基于 cordis 从零实现的 Coding Agent Harness（个人项目）**
-技术栈：TypeScript（Node 原生类型擦除，零构建）· cordis · DeepSeek Chat Completions（流式 + tool_calling）· node:test · Biome
-
-- 基于 cordis 把 Harness 拆成 **13 个可替换 seam**（会话 / 工具 / 模型 / 提示词 / 审批 / 沙箱 / 持久化 / 压缩 / 权限 / 目标），统一 Definition–Provider–Consumer 三段式；核心链路零框架依赖、可独立单测。
-- 实现**追加式事件日志 + 消息投影**：Session 只存事件，发给模型的消息由 `deriveMessages()` 现场投影；取消多工具轮次时先补齐 tool_call 配对再抛出，保证任意时刻投影都是合法请求。
-- 实现**流式 tool-calling 全链路**：SSE 增量解析（末行无换行、`data:[DONE]`）→ tool_call 分片拼装（name 去重、arguments 等流结束再解析）→ 统一执行流水线（未知工具与内部异常收敛为 `isError`）→ 结果回写事件日志。
-- 实现 **workspace 路径闸门与审批**：词法拒绝绝对路径与 `../`，`realpath` 拒绝越界软链；没有审批通道时写操作 fail closed；再由权限预设把 sandbox 模式与审批策略捆绑（含派生 `custom`）。
-- 实现**追加式 JSONL 持久化与崩溃恢复**：首行 SessionHeader + 事件逐行落盘、写入串行化；损坏行（含崩溃残留半行）只丢该行而不使加载失败；CLI 支持 `/sessions` `/resume` `/delete`。
-- 实现**基于 surface 遮蔽的上下文压缩**：token 计量 → 工具大结果剪枝并重新计量 → 旧区间摘要成检查点（`compaction/start → summary → user/message(surfaceOp) → end`）；事件只追加，历史改写靠投影遮蔽而非删除；摘要失败不落 `end`。
-- 实现**持久完成目标**：四阶段状态机 + Round 配额，`/continue` 开新轮、到上限停止自动续行；目标经 `goal/change` 事件持久化后可恢复。
-
-设计参照 DeepSeek Harness 的公开文档与 cordis 教程；内核为 cordis，未自研插件 / DI 框架。
-
-## 事实卡（面试前对齐）
+## 事实卡
 
 | 项目 | 事实 |
 |---|---|
 | 内核 | `@deepseek-ai/cordis`（Context / Service / effect / inject）；手写内核 0 行 |
 | 服务 seam | 13 个，见下表 |
 | 代码量 | `src/` 39 个文件 ≈ 4050 行；`test/` 12 个文件 ≈ 2400 行 |
-| 测试 | 104 passed（`node --test test/*.test.ts`） |
-| 构建 | 无。Node 22 原生类型擦除直接 `node src/index.ts` |
-| 提交 | 11 个，D1–D7 + E1–E4，一个里程碑一个 commit |
+| 测试 | 104 passed（`pnpm test`） |
+| 构建 | 无。Node 22 原生类型擦除，直接 `node src/index.ts` |
+| 提交 | 一个里程碑一个 commit（D1–D7 + E1–E4，另有文档与 e2e 收尾） |
 | 质量门 | `pnpm typecheck` / `pnpm lint` 零告警 |
 
 ### seam 一览
@@ -48,13 +33,15 @@
 | `ctx.permissionPresets` | sandbox 模式 × 审批策略的具名捆绑 | E3 |
 | `ctx.goal` | 持久目标 + Round | E4 |
 
-## 值得在面试里讲的五个决策
+完整文件索引见 [ARCHITECTURE.md](./ARCHITECTURE.md) 第 11 节。
+
+## 五个关键设计决策
 
 1. **Session 存事件、消息靠投影。** 历史改写（清空、压缩）都表达成新事件，投影现场折叠。好处：不会出现「消息与事件不一致」，压缩可回放、可审计。
 2. **tool_call 必须配对。** 取消多工具轮次时，先把当前及之后的所有 call 写成取消结果、落 `tool/result`，**再**抛 `AbortError`。否则投影出的 assistant 消息有 `tool_calls` 却没有 tool 回复，此后该 session 每次请求都会被服务端拒绝。
-3. **压缩不是删历史，而是遮蔽。** 摘要消息带 `surfaceOp: { op: 'replace', start, end }`，投影时在**区间起点**插入它、隐藏旧区间。区间边界必须落在 tool_call/result 配对完整的位置上。
+3. **压缩不是删历史，而是遮蔽。** 摘要消息带 `surfaceOp: { op: 'replace', start, end }`，投影时在**区间起点**插入它、隐藏旧区间。区间边界必须落在 tool_call/result 配对完整的位置上；摘要失败只留 `compaction/start`，不写 `end`。
 4. **默认拒绝。** 没有审批通道时 `approval.request()` 返回 `deny`（fail closed），而不是放行。DSH 的 `never` 是「不询问、直接拒绝」；`danger-full-access` 之所以能「全放行」，是因为沙箱模式本身已放行、工具不再触发审批。
-5. **框架 vs 业务的边界。** `core/` 不 import cordis（纯逻辑、可单测），`plugins/` 才把它包成 Service。两个副作用容易踩：Service 方法里的 `this` 是 tracing 影子代理（不能用 `#` 私有字段、不能做函数身份比较）。
+5. **框架与业务的边界。** `core/` 不 import cordis（纯逻辑、可单测），`plugins/` 才把它包成 Service。两个副作用容易踩：Service 方法里的 `this` 是 tracing 影子代理（不能用 `#` 私有字段、不能做函数身份比较）。
 
 ## 诚实声明与已知限制
 

@@ -1,5 +1,19 @@
 # tiny-dsh
 
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+![Node.js](https://img.shields.io/badge/node-%3E%3D22.18-brightgreen.svg)
+![Build](https://img.shields.io/badge/build-none%20(native%20type%20stripping)-blue.svg)
+
+**tiny-dsh** is a minimal coding-agent harness built from scratch on [cordis](https://www.npmjs.com/package/@deepseek-ai/cordis), organized by the capability-seam layout of DeepSeek Harness (DSH). It is not a DSH fork and contains no DSH source code.
+
+- **13 swappable seams** (`ctx.sessions` / `tools` / `llm` / `systemPrompt` / `approval` / `sandbox` / `persistence` / `tokenMeter` / `compaction` / `permissionPresets` / `agentLoop` / `agents` / `goal`); `src/core` holds pure logic and never imports the framework.
+- **Append-only event log + projection**: sessions store events, and the messages sent to the model are derived on the fly — history rewrites (compaction) are surface operations, not deletions.
+- **Structured tool calling**: SSE streaming → incremental `tool_call` reassembly → one execution pipeline (unknown tools and thrown errors become `isError` results) → results written back to the log.
+- **Safe by default**: workspace path gate (absolute paths, `../` and symlink escapes rejected), approval that fails closed without a channel, JSONL persistence with crash recovery, and surface-op based context compaction.
+- **No build step**: runs on Node 22 native type stripping. `pnpm start` for the REPL, `pnpm test` for 100+ behavioural tests.
+
+---
+
 一个从零实现的、基于 [cordis](https://www.npmjs.com/package/@deepseek-ai/cordis) 的最小 Coding Agent Harness。
 
 设计参照 DeepSeek Harness（DSH）的能力 seam 划分方式。**它不是 DSH 的分支，也不包含 DSH 或任何其它项目的源码。**
@@ -39,9 +53,9 @@ pnpm run e2e            # 真实模型端到端冒烟（需要 .env 里的 DEEPS
 
 ## 文档
 
-- [ARCHITECTURE.md](./ARCHITECTURE.md) —— 分层、seam、核心数据结构、关键不变式
+- [ARCHITECTURE.md](./ARCHITECTURE.md) —— 分层、seam、核心数据结构、关键不变式、文件索引
 - [ROADMAP.md](./ROADMAP.md) —— 里程碑与验收标准
-- [RESUME.md](./RESUME.md) —— 项目说明与简历文案（含事实卡、验证入口）
+- [PROJECT-NOTES.md](./PROJECT-NOTES.md) —— 事实卡、关键设计决策、已知限制、验证入口
 
 ## 状态
 
