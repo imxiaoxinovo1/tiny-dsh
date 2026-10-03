@@ -236,14 +236,20 @@ interface RunResult {
 
 // ---------- D6 ctx.systemPrompt ----------
 interface SystemPromptService {
-    section(definition: PromptSection): () => void
+    section(definition: PromptSection): () => void   // 静态文本或工厂
+    context(definition: PromptContext): () => void   // 必须是工厂，每步重算
+    list(): PromptEntryInfo[]
     assemble(): Promise<string>               // 每次重新调用动态片段
 }
 
 interface PromptSection {
     name: string
-    order: number
+    order?: number                            // 越小越靠前；同级按注册顺序
     text: string | (() => string | Promise<string>)
+}
+
+interface PromptContext extends Omit<PromptSection, 'text'> {
+    text: () => string | Promise<string>
 }
 
 // ---------- D7 ctx.approval / ctx.sandbox ----------
