@@ -3,10 +3,18 @@ import {
     type CompactionOptions,
     CompactionRuntime,
     type PrunerOptions,
-    type SummarizeInput,
     type Summarizer,
 } from '../core/compaction.ts'
 import type { ChatMessage } from '../core/message.ts'
+import {
+    createSemanticSummarizer,
+    type SemanticMode,
+    type SemanticObservation,
+    SUMMARY_SYSTEM,
+    type SummaryInput,
+    summaryPrompt,
+} from '../core/semantic-compaction.ts'
+import { createJevJudge, type JevConfig } from '../providers/jev.ts'
 
 /**
  * E2：把 `CompactionRuntime` 包成 `ctx.compaction`。
@@ -33,39 +41,34 @@ export interface CompactionConfig {
     model?: string
     /** 注入摘要器（测试用）；缺省用 ctx.llm。 */
     summarizer?: Summarizer
+    semanticMode?: SemanticMode
+    jev?: JevConfig
 }
-
-const SUMMARIZE_SYSTEM = [
-    'You compress an agent conversation into a durable checkpoint.',
-    'Keep concrete facts: file paths, commands, decisions, unresolved questions, and the current plan.',
-    'Drop pleasantries and repetition. Reply with the summary only.',
-].join('\n')
 
 async function defaultSummarize(
     ctx: Context,
     model: string | undefined,
-    input: SummarizeInput,
+    input: SummaryInput,
 ): Promise<string> {
     const llm = ctx.get('llm')
     if (!llm) throw new Error('compaction requires ctx.llm for the default summarizer')
-    const transcript = input.messages
-        .map((message) => `${message.role}: ${message.content ?? ''}`)
-        .join('\n')
     const response = await llm.complete({
         model: model ?? 'deepseek/deepseek-v4-flash',
-        system: SUMMARIZE_SYSTEM,
-        messages: [
-            { role: 'user', content: `Summarize this conversation segment:\n\n${transcript}` },
-        ],
+        system: SUMMARY_SYSTEM,
+        signal: input.signal,
+        messages: [{ role: 'user', content: summaryPrompt(input) }],
     })
     return response.content
 }
 
 export class CompactionService extends Service {
     readonly runtime: CompactionRuntime
+    readonly semanticMode: SemanticMode
+    lastObservation: SemanticObservation | undefined
 
     constructor(ctx: Context, config: CompactionConfig = {}) {
         super(ctx, 'compaction')
+        this.semanticMode = config.semanticMode ?? 'off'
 
         // 注意：不能直接 spread 带 undefined 的键，否则会覆盖默认值。
         const options: Partial<CompactionOptions> = {}
@@ -86,7 +89,15 @@ export class CompactionService extends Service {
             sessions: ctx.sessions.store,
             tokenMeter: ctx.tokenMeter,
             summarizer:
-                config.summarizer ?? ((input) => defaultSummarize(ctx, config.model, input)),
+                config.summarizer ??
+                createSemanticSummarizer({
+                    mode: this.semanticMode,
+                    judge: createJevJudge(config.jev),
+                    summarize: (input) => defaultSummarize(ctx, config.model, input),
+                    observe: (observation) => {
+                        this.lastObservation = observation
+                    },
+                }),
             options,
             pruner,
             onError: (error) => ctx.logger.error(error),
@@ -94,13 +105,13 @@ export class CompactionService extends Service {
     }
 
     /** 需要发给模型的消息（含剪枝与摘要）。 */
-    prepare(sessionId: string): Promise<ChatMessage[]> {
-        return this.runtime.prepare(sessionId)
+    prepare(sessionId: string, signal?: AbortSignal): Promise<ChatMessage[]> {
+        return this.runtime.prepare(sessionId, signal)
     }
 
     /** 显式压缩一次。 */
-    maybeCompact(sessionId: string): Promise<boolean> {
-        return this.runtime.maybeCompact(sessionId)
+    maybeCompact(sessionId: string, signal?: AbortSignal): Promise<boolean> {
+        return this.runtime.maybeCompact(sessionId, signal)
     }
 
     /** 当前阈值。 */

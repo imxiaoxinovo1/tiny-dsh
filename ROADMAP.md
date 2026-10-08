@@ -132,3 +132,10 @@ DSH 出处：docs/subsystems/goal.md
 - 实现 sandbox 模式 × 审批策略的权限预设，以及持久 goal 的 Round 续行
 
 并注明参考来源，例如「设计参照 DeepSeek Harness 的公开文档与 cordis 教程」。
+
+## E5：Jev 辅助压缩试验（研究完成，默认关闭）
+
+- 完成：完整摘要输入、重点标记、off/shadow/assisted、失败回退、取消传播与真实对照。
+- 完成：简洁 CLI 页头、工具状态、新会话与状态命令。
+- 首轮：6 个合成会话；质量指标与修复组持平，Jev 增加约 24% 摘要耗时。
+- 未晋级：更多独立会话与重复验证尚未完成，不默认启用。方案与阈值见 `docs/experiments/jev-compaction-pilot.md`。

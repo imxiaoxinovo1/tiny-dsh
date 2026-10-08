@@ -1,5 +1,6 @@
 import { Context } from '@deepseek-ai/cordis'
 import dotenv from 'dotenv'
+import type { SemanticMode } from './core/semantic-compaction.ts'
 import * as agentLoop from './plugins/agent-loop.ts'
 import * as agents from './plugins/agents.ts'
 import * as approval from './plugins/approval.ts'
@@ -32,6 +33,10 @@ const sessionsDir = process.env.TINY_DSH_SESSIONS ?? 'sessions'
 const maxTokens = Number(process.env.TINY_DSH_MAX_TOKENS ?? '') || 8000
 const permission = process.env.TINY_DSH_PERMISSION ?? 'workspace-write'
 const maxGoalRounds = Number(process.env.TINY_DSH_MAX_GOAL_ROUNDS ?? '') || 3
+const semanticMode = process.env.TINY_DSH_JEV_MODE ?? 'off'
+if (!['off', 'shadow', 'assisted'].includes(semanticMode)) {
+    throw new Error('TINY_DSH_JEV_MODE must be off, shadow, or assisted')
+}
 const root = new Context()
 
 // 核心 seam：加载顺序由 inject 决定，这里只是可读性。
@@ -42,7 +47,12 @@ await root.plugin(systemPrompt)
 await root.plugin(tokenMeter)
 await root.plugin(tools)
 await root.plugin(llm)
-await root.plugin(compaction, { maxTokens, model })
+await root.plugin(compaction, {
+    maxTokens,
+    model,
+    semanticMode: semanticMode as SemanticMode,
+    jev: { apiKey: process.env.TYPESAFE_API_KEY, model: process.env.TINY_DSH_JEV_MODEL },
+})
 await root.plugin(approval)
 await root.plugin(sandbox, { workspace })
 await root.plugin(permissionPresets, { defaultPreset: permission })
@@ -61,48 +71,13 @@ await root.plugin(deepseek, {
     baseUrl: process.env.DEEPSEEK_BASE_URL,
 })
 
-const session = root.sessions.create({ title: 'boot' })
-root.sessions.append(session.id, 'user/message', { content: 'hello' })
-const prompt = await root.systemPrompt.assemble()
-const toolNames = root.tools
-    .schemas()
-    .map((schema) => schema.function.name)
-    .join(', ')
-
-console.log(`tiny-dsh: ${root.constructor.name} ready`)
-console.log(`  ctx.hello.greet('world') -> ${root.hello.greet('world')}`)
-console.log(
-    `  ctx.sessions -> ${root.sessions.list().length} session(s), ` +
-        `${root.sessions.deriveMessages(session.id).length} projected message(s)`,
-)
-console.log(`  ctx.tools -> ${root.tools.schemas().length} tool(s): ${toolNames}`)
-console.log(`  ctx.agents -> ${root.agents.list().length} agent(s), agentLoop ready`)
-console.log(
-    `  ctx.llm -> ${
-        root.llm
-            .list()
-            .map((provider) => provider.name)
-            .join(', ') || '(none)'
-    }`,
-)
-console.log(
-    `  ctx.systemPrompt -> ${root.systemPrompt.list().length} fragment(s), ${prompt.length} chars`,
-)
-console.log(
-    `  ctx.sandbox -> ${root.sandbox.mode} + approval/${root.approval.policy} ` +
-        `(preset: ${root.permissionPresets.current()}) @ ${root.sandbox.workspace}`,
-)
-console.log(
-    `  ctx.tokenMeter / ctx.compaction -> ~${root.tokenMeter.count(prompt)} tokens now, threshold ${root.compaction.maxTokens}`,
-)
-console.log(`  ctx.goal -> ${root.goal.list().length} goal(s), round cap ${maxGoalRounds}`)
-
-// 确认 boot session 已落盘。
-await root.persistence.flush()
-const persisted = await root.persistence.list()
-console.log(
-    `  ctx.persistence -> ${persisted.length} file(s) @ ${root.persistence.provider.directory}`,
-)
+// Startup diagnostics are opt-in; interactive mode has a compact header.
+if (process.env.TINY_DSH_DEBUG === '1') {
+    console.log('tiny-dsh ready · services: sessions, tools, llm, compaction, goal')
+    console.log(`workspace=${workspace} model=${model} Jev=${semanticMode}`)
+} else if (!process.stdin.isTTY) {
+    console.log('tiny-dsh ready · run in an interactive terminal to chat')
+}
 
 // CLI 最后挂：交互式 TTY 下进入 REPL，否则什么都不做。
 await root.plugin(cli, { model, interactive: Boolean(process.stdin.isTTY) })

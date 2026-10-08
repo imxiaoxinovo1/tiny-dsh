@@ -112,12 +112,23 @@ export async function runSlashCommand(
     switch (command) {
         case '/help':
             return {
-                output: '/help  /sessions  /resume <id>  /delete <id>  /clear  /permissions  /permission <name>  /goal [<objective>|pause|resume|complete|block <reason>]  /continue  /exit',
+                output: [
+                    'Session    /new  /clear  /sessions  /resume <id>  /delete <id>',
+                    'Access     /permissions  /permission <name>',
+                    'Goal       /goal <objective>  /goal pause|resume|complete|block <reason>',
+                    '           /continue',
+                    'App        /status  /help  /exit',
+                ].join('\n'),
             }
 
         case '/exit':
         case '/quit':
             return { output: '', exit: true }
+
+        case '/new': {
+            const fresh = ports.sessions.create({ title: 'repl' })
+            return { output: 'new session', sessionId: fresh.id }
+        }
 
         case '/clear':
             ports.sessions.clear(state.sessionId)
@@ -229,6 +240,6 @@ export async function runSlashCommand(
         }
 
         default:
-            return undefined
+            return command.startsWith('/') ? { output: 'unknown command; use /help' } : undefined
     }
 }

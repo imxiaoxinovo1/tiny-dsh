@@ -25,6 +25,9 @@ export interface SummarizeInput {
     start: number
     end: number
     messages: ChatMessage[]
+    /** Latest user request for semantic prioritization; not an execution instruction. */
+    task?: string
+    signal?: AbortSignal
 }
 
 /** 摘要器；测试与真实运行都可以替换。 */
@@ -203,7 +206,7 @@ export class CompactionRuntime {
      * 生产发给模型的消息：超阈值时先剪枝并重新计量，仍超标才做摘要，
      * 最后重新投影（并再剪一次尾部的大结果）。
      */
-    async prepare(sessionId: string): Promise<ChatMessage[]> {
+    async prepare(sessionId: string, signal?: AbortSignal): Promise<ChatMessage[]> {
         const sessions = this.#deps.sessions
         const tokenMeter = this.#deps.tokenMeter
 
@@ -214,7 +217,7 @@ export class CompactionRuntime {
         messages = pruneMessages(messages, this.#pruner)
         if (tokenMeter.countMessages(messages) <= this.#options.maxTokens) return messages
 
-        const compacted = await this.maybeCompact(sessionId)
+        const compacted = await this.maybeCompact(sessionId, signal)
         if (!compacted) return messages
         return pruneMessages(sessions.deriveMessages(sessionId), this.#pruner)
     }
@@ -224,7 +227,8 @@ export class CompactionRuntime {
      *
      * @returns 是否真的写入了检查点。
      */
-    async maybeCompact(sessionId: string): Promise<boolean> {
+    async maybeCompact(sessionId: string, signal?: AbortSignal): Promise<boolean> {
+        signal?.throwIfAborted()
         const { sessions, tokenMeter, summarizer } = this.#deps
         const session = sessions.require(sessionId)
         const range = pickCompactionRange(session.events, this.#options)
@@ -245,13 +249,21 @@ export class CompactionRuntime {
                 start: range.start,
                 end: range.end,
                 messages: range.messages,
+                signal,
+                task:
+                    sessions
+                        .deriveMessages(sessionId)
+                        .findLast((message) => message.role === 'user')?.content ?? undefined,
             })
+            if (!summary.trim()) throw new Error('empty checkpoint summary')
         } catch (error) {
+            signal?.throwIfAborted()
             // 只留 start：没有 summary / end，就不会出现「假完成」。
             this.#deps.onError?.(error)
             return false
         }
 
+        signal?.throwIfAborted()
         sessions.append(sessionId, 'compaction/summary', {
             id,
             start: range.start,

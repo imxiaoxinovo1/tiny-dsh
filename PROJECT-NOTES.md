@@ -9,8 +9,8 @@
 |---|---|
 | 内核 | `@deepseek-ai/cordis`（Context / Service / effect / inject）；手写内核 0 行 |
 | 服务 seam | 13 个，见下表 |
-| 代码量 | `src/` 39 个文件 ≈ 4050 行；`test/` 12 个文件 ≈ 2400 行 |
-| 测试 | 104 passed（`pnpm test`） |
+| 代码量 | `src/` 42 个 TypeScript 文件；`test/` 14 个测试文件 |
+| 测试 | 120 passed（`pnpm test`） |
 | 构建 | 无。Node 22 原生类型擦除，直接 `node src/index.ts` |
 | 提交 | 一个里程碑一个 commit（D1–D7 + E1–E4，另有文档与 e2e 收尾） |
 | 质量门 | `pnpm typecheck` / `pnpm lint` 零告警 |
@@ -53,10 +53,10 @@
 
 ```bash
 pnpm install
-pnpm test          # 104 个行为测试
+pnpm test          # 120 个行为测试
 pnpm typecheck     # tsc --noEmit
 pnpm lint          # biome check .
-pnpm start         # 组合根：打印就绪与服务清单
+pnpm start         # 交互式简洁 REPL；非交互只打印就绪
 
 # 真实端到端（需要 .env 里的 DEEPSEEK_API_KEY）
 pnpm run e2e                                    # 一次带工具往返的 run
@@ -66,3 +66,7 @@ $env:TINY_DSH_E2E_GOAL="Reply with the next integer only."; $env:TINY_DSH_MAX_GO
 ```
 
 设计文档见 [ARCHITECTURE.md](./ARCHITECTURE.md)；里程碑与验收标准见 [ROADMAP.md](./ROADMAP.md)。
+
+## Jev 可选扩展
+
+完整消息 JSON 纳入摘要输入，保留工具名称/参数/关联 ID。Jev 通过独立 provider 批量判断重要性，支持 off/shadow/assisted；阈值与 top-K 由代码控制，超时或无效结果回退，取消不会提交检查点。首轮 6 个合成会话没有显示质量增益，默认关闭。详见 [试验报告](docs/experiments/jev-compaction-pilot.md)。

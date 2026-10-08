@@ -72,4 +72,19 @@ E2：token 计量 + 工具结果剪枝 + 基于 surfaceOp 的区间摘要压缩�
 E3：sandbox 模式 × 审批策略的权限预设（含派生 `custom`），见 [`src/core/permission-preset.ts`](./src/core/permission-preset.ts)。
 E4：持久完成目标（四阶段）+ Round 上限 + `/continue` 续行，见 [`src/core/goal.ts`](./src/core/goal.ts)。实现进度见 [ROADMAP.md](./ROADMAP.md)。
 
-D1–D7 与 E1–E4 全部完成，共 104 个测试。
+D1–D7 与 E1–E4 全部完成，共 120 个测试。
+
+## Jev 压缩实验与 CLI
+
+CLI 默认显示简洁页头、思考状态与工具路径；`/help` 查看命令，`/new` 开新会话，`/status` 查看状态。`pnpm run preview:cli` 无需 API 即可预览界面。`NO_COLOR` 可关闭颜色；`TINY_DSH_DEBUG=1` 显示启动诊断。
+
+Jev 仅提供重要性提示，DeepSeek 生成摘要，完整旧区间不因评分被删除。默认 `TINY_DSH_JEV_MODE=off`；`shadow` 仅观察，`assisted` 把重点原文交给摘要模型。启用前在本仓库 `.env` 设置 `TYPESAFE_API_KEY`。
+
+```powershell
+$env:TINY_DSH_JEV_MODE='assisted'
+pnpm start
+```
+
+首轮真实试验没有显示超出输入修复的质量收益，因此保持默认关闭。方案、数据边界与结果见 [实验报告](docs/experiments/jev-compaction-pilot.md)。
+
+启动欢迎页带 Tiny-dsh 字标与模型/目录/权限信息卡；窄终端自动隐藏大字标。回答区保持流式输出与原文缩进，工具操作使用简短标签。`/status` 显示紧凑状态卡。

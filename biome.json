@@ -6,6 +6,19 @@
         "indentWidth": 4,
         "lineWidth": 100
     },
-    "linter": { "enabled": true, "rules": { "preset": "recommended" } },
-    "javascript": { "formatter": { "quoteStyle": "single", "semicolons": "asNeeded" } }
+    "linter": {
+        "enabled": true,
+        "rules": {
+            "preset": "recommended"
+        }
+    },
+    "javascript": {
+        "formatter": {
+            "quoteStyle": "single",
+            "semicolons": "asNeeded"
+        }
+    },
+    "files": {
+        "includes": ["**", "!!.tmp", "!!sessions", "!!other", "!!**/*.local.*"]
+    }
 }

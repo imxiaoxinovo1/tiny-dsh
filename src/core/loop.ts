@@ -69,7 +69,7 @@ export interface ToolPorts {
 
 /** 压缩端口：由它生产最终发给模型的消息（含剪枝 / 摘要）。 */
 export interface CompactionPort {
-    prepare(sessionId: string): Promise<ChatMessage[]>
+    prepare(sessionId: string, signal?: AbortSignal): Promise<ChatMessage[]>
 }
 
 function cancelledResult(call: ToolCall): ToolResult {
@@ -109,7 +109,7 @@ export class AgentLoopRuntime {
             const system = this.#deps.system ? await this.#deps.system() : ''
             const compaction = this.#deps.compaction?.()
             const messages = compaction
-                ? await compaction.prepare(params.sessionId)
+                ? await compaction.prepare(params.sessionId, params.signal)
                 : sessions.deriveMessages(params.sessionId)
             const response = await this.#deps.llm.complete({
                 model: params.model,

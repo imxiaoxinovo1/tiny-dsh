@@ -1,10 +1,11 @@
 import * as readline from 'node:readline/promises'
 import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '../core/agent.ts'
+import { isAbortError } from '../core/tool.ts'
 import { createApprovalAnswerer } from './answerer.ts'
 import { goalContinuationPrompt, runSlashCommand } from './commands.ts'
+import { TerminalView } from './ui.ts'
 
-/** REPL 配置。 */
 export interface ReplOptions {
     model: string
 }
@@ -18,55 +19,122 @@ function activate(ctx: Context, model: string, sessionId: string): ActiveSession
     return { sessionId, agent: ctx.agents.create({ sessionId, model }) }
 }
 
-function write(text: string): void {
-    process.stdout.write(text)
-}
-
-/**
- * 最小 REPL：输入即 `agent.run()`，支持 E1/E3/E4 的斜杠命令。
- *
- * 审批用同一个 readline 实例提问（顺序调用，不会和主循环抢 stdin）。
- */
 export async function startRepl(ctx: Context, options: ReplOptions): Promise<void> {
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
-    ctx.get('approval')?.setAnswerer(createApprovalAnswerer((question) => rl.question(question)))
-
+    const view = new TerminalView()
+    let turnAbort: AbortController | undefined
+    const disposeAnswerer = ctx.get('approval')?.setAnswerer(
+        createApprovalAnswerer((question) => {
+            view.stopThinking()
+            return rl.question(question, { signal: turnAbort?.signal })
+        }),
+    )
     const session = ctx.sessions.create({ title: 'repl' })
     let active = activate(ctx, options.model, session.id)
-    const onInterrupt = () => active.agent.cancel()
+    let closed = false
+    const onInterrupt = () => {
+        if (active.agent.running) {
+            turnAbort?.abort()
+            active.agent.cancel()
+        } else rl.close()
+    }
+    rl.on('SIGINT', onInterrupt)
     process.on('SIGINT', onInterrupt)
+    rl.on('close', () => {
+        closed = true
+        turnAbort?.abort()
+        active.agent.cancel()
+    })
 
-    const runTurn = async (text: string): Promise<void> => {
+    const runTurn = async (text: string): Promise<boolean> => {
+        const started = performance.now()
+        view.beginTurn()
+        view.thinking()
+        turnAbort = new AbortController()
+        const previousObservation = ctx.get('compaction')?.lastObservation
         try {
-            const result = await active.agent.run(text, { onContent: (chunk) => write(chunk) })
-            write(`\n[${result.stopReason} · ${result.rounds} round(s)]\n`)
+            const result = await active.agent.run(text, {
+                signal: turnAbort.signal,
+                onContent: (chunk) => view.content(chunk),
+                onAssistant: (response) => {
+                    view.stopThinking()
+                    for (const call of response.toolCalls) view.tool(call)
+                },
+                onToolResult: (result) => {
+                    view.toolResult(result)
+                    view.thinking()
+                },
+            })
+            view.finish(
+                result.rounds,
+                performance.now() - started,
+                result.stopReason === 'maxRounds',
+            )
+            const observation = ctx.get('compaction')?.lastObservation
+            if (observation !== previousObservation && observation?.outcome === 'fallback') {
+                view.notice('Jev unavailable · used standard summary')
+            }
+            return true
         } catch (error) {
-            write(`\n[error] ${error instanceof Error ? error.message : String(error)}\n`)
+            view.notice(
+                isAbortError(error)
+                    ? 'Cancelled'
+                    : error instanceof Error
+                      ? error.message
+                      : String(error),
+                isAbortError(error) ? 'info' : 'error',
+            )
+            return false
+        } finally {
+            turnAbort = undefined
+            view.stopThinking()
         }
     }
 
-    /** 目标仍 active 且没到 Round 上限就自动续行；到上限（nextRound 返回 undefined）就停。 */
     const driveGoal = async (): Promise<void> => {
         const goal = ctx.get('goal')
         if (!goal) return
-        while (true) {
+        while (!closed) {
             const current = goal.current(active.sessionId)
             if (current?.phase !== 'active') return
             const round = goal.nextRound(current.id)
             if (round === undefined) return
-            write(`\n[goal round ${round}/${current.maxGoalRounds}]\n`)
-            await runTurn(goalContinuationPrompt(current, round))
+            view.notice(`Goal ${round}/${current.maxGoalRounds}`)
+            if (!(await runTurn(goalContinuationPrompt(current, round)))) return
         }
     }
 
-    write(`tiny-dsh · model=${options.model}\n/help for commands, /exit to quit.\n`)
+    view.header({
+        model: options.model,
+        workspace: ctx.get('sandbox')?.workspace ?? process.cwd(),
+        permission: ctx.get('permissionPresets')?.current() ?? 'custom',
+        semantic: ctx.get('compaction')?.semanticMode ?? 'off',
+    })
 
     try {
-        while (true) {
-            const raw = await rl.question('\ntiny-dsh> ')
+        while (!closed) {
+            let raw: string
+            try {
+                raw = await rl.question(view.prompt())
+            } catch (error) {
+                if (closed) break
+                throw error
+            }
             const line = raw.trim()
             if (!line) continue
-
+            if (line === '/status') {
+                view.header(
+                    {
+                        model: options.model,
+                        workspace: ctx.get('sandbox')?.workspace ?? process.cwd(),
+                        permission: ctx.get('permissionPresets')?.current() ?? 'custom',
+                        semantic: ctx.get('compaction')?.semanticMode ?? 'off',
+                    },
+                    true,
+                )
+                view.notice(`Session ${active.sessionId}`)
+                continue
+            }
             const command = await runSlashCommand(
                 line,
                 {
@@ -78,28 +146,30 @@ export async function startRepl(ctx: Context, options: ReplOptions): Promise<voi
                 { sessionId: active.sessionId },
             )
             if (command) {
-                if (command.output) write(`${command.output}\n`)
+                if (command.output) process.stdout.write(`\n${command.output}\n`)
                 if (command.exit) break
                 if (command.sessionId && command.sessionId !== active.sessionId) {
+                    ctx.agents.delete(active.agent.id)
                     active = activate(ctx, options.model, command.sessionId)
                 }
-                // 活跃会话被 /delete 删掉时，开一个新的。
                 if (!ctx.sessions.get(active.sessionId)) {
+                    ctx.agents.delete(active.agent.id)
                     const fresh = ctx.sessions.create({ title: 'repl' })
                     active = activate(ctx, options.model, fresh.id)
-                    write('active session was deleted; started a new one\n')
+                    view.notice('Started a new session')
                 }
-                // /continue 开了一个新 Round：把续行提示交给 Agent。
-                if (command.run) await runTurn(command.run)
+                if (command.run && !(await runTurn(command.run))) continue
                 await driveGoal()
                 continue
             }
-
-            await runTurn(line)
-            await driveGoal()
+            if (await runTurn(line)) await driveGoal()
         }
     } finally {
         process.off('SIGINT', onInterrupt)
+        disposeAnswerer?.()
+        view.stopThinking()
+        ctx.agents.delete(active.agent.id)
         rl.close()
+        await ctx.get('persistence')?.flush()
     }
 }

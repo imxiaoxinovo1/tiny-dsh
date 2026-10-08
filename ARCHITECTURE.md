@@ -513,3 +513,7 @@ cli/agents.run(input)
 | 压缩 / toolResultPruner / tokenMeter | docs/subsystems/compaction.md、token-meter.md |
 | goal 与 Round 上限 | docs/subsystems/goal.md |
 | cordis 插件与 Service | docs/cordis-tutorial/ |
+
+## 可选语义压缩与终端展示
+
+`src/core/semantic-compaction.ts` 定义重要性判断端口、完整会话序列化及组合摘要器；`src/providers/jev.ts` 实现 TypeSafe Score HTTP 接入。`plugins/compaction.ts` 组装判断与 DeepSeek 摘要，core 不依赖网络或 cordis。Jev 只标记重点，不决定事件删除、审批或工具配对边界；默认关闭。`src/cli/ui.ts` 负责紧凑终端输出、工具状态与纯文本回退。实验方案见 `docs/experiments/jev-compaction-pilot.md`。
