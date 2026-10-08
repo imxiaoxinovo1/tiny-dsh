@@ -4,5 +4,5 @@ node_modules/
 *.log
 sessions/
 
-# 本地私有笔记（例如简历文案）
-*.local.md
+# 本地私有文件（简历文案、LaTeX 简历等，含个人信息，绝不提交）
+*.local.*
