@@ -7,6 +7,10 @@
 
 **tiny-dsh** is a minimal coding-agent harness built from scratch on [cordis](https://www.npmjs.com/package/@deepseek-ai/cordis), organized by the capability-seam layout of DeepSeek Harness (DSH). It is not a DSH fork and contains no DSH source code.
 
+![tiny-dsh 运行闭环：会话、上下文、模型与受保护工具](./docs/assets/tiny-dsh-framework-runtime.png)
+
+> 开发版运行闭环示意：图中的第 14 个服务 `ctx.evolution` 为实验能力；13 服务基线具有相同的核心闭环。
+
 - **13 swappable seams** (`ctx.sessions` / `tools` / `llm` / `systemPrompt` / `approval` / `sandbox` / `persistence` / `tokenMeter` / `compaction` / `permissionPresets` / `agentLoop` / `agents` / `goal`); `src/core` holds pure logic and never imports the framework.
 - **Append-only event log + projection**: sessions store events, and the messages sent to the model are derived on the fly — history rewrites (compaction) are surface operations, not deletions.
 - **Structured tool calling**: SSE streaming → incremental `tool_call` reassembly → one execution pipeline (unknown tools and thrown errors become `isError` results) → results written back to the log.

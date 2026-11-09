@@ -1,0 +1,179 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1080" viewBox="0 0 1600 1080" role="img" aria-labelledby="figure-title figure-description" font-family="Microsoft YaHei" font-weight="400" font-style="normal">
+  <title id="figure-title">tiny-dsh：模型与 Harness 的编码智能体闭环</title>
+  <desc id="figure-description">CLI 经 cordis 插件与 ctx 服务组合运行时。Session 的只追加事件被投影为模型消息，每步组装系统提示和上下文，再请求 DeepSeek。工具调用先通过审批及工作区路径门，工具结果写回 Session 后进入下一步；无工具请求则结束。JSONL 监听事件并可恢复会话。core 不依赖 cordis。可选上下文压缩、token 预算、持久目标；Harness 演化候选须显式选择，不自动晋升。</desc>
+  <defs>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
+      <path d="M1 1L9 5L1 9" fill="none" stroke="#58a6ff" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" data-asset-key="b-0001" />
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
+      <path d="M1 1L9 5L1 9" fill="none" stroke="#3fb950" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" data-asset-key="b-0002" />
+    </marker>
+    <marker id="arrow-purple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
+      <path d="M1 1L9 5L1 9" fill="none" stroke="#bc8cff" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" data-asset-key="b-0003" />
+    </marker>
+    <marker id="arrow-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
+      <path d="M1 1L9 5L1 9" fill="none" stroke="#a2aebc" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" data-asset-key="b-0004" />
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="1600" height="1080" fill="#0d1117" id="canvas" data-asset-key="b-0005" />
+  <g id="intro" data-part-id="intro" data-asset-key="b-0006">
+    <g transform="translate(57 59) scale(1.55000)" data-icon="terminal" data-asset-key="b-0007">
+      <rect x="1" y="2" width="38" height="35" rx="6" fill="#0d1117" stroke="#58a6ff" stroke-width="1.5" data-asset-key="b-0008" />
+      <path d="M1 11H39" fill="none" stroke="#58a6ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-asset-key="b-0009" />
+      <path d="M10 18L16 23L10 28M22 28H30" fill="none" stroke="#58a6ff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" data-asset-key="b-0010" />
+      <circle cx="7" cy="7" r="1" fill="#58a6ff" data-asset-key="b-0011" />
+      <circle cx="12" cy="7" r="1" fill="#58a6ff" data-asset-key="b-0012" />
+    </g>
+    <text x="141" y="101" fill="#e6edf3" font-family="Segoe UI" font-size="52" font-weight="600" font-style="normal" data-asset-key="b-0013">tiny-dsh</text>
+    <text x="141" y="140" fill="#e6edf3" font-family="Microsoft YaHei" font-size="24" font-weight="400" font-style="normal" data-asset-key="b-0014">基于 cordis 的极简编码智能体 Harness</text>
+    <text x="1544" y="89" fill="#e6edf3" font-family="Consolas" font-size="26" font-weight="400" font-style="normal" text-anchor="end" data-asset-key="b-0015">Agent = Model + Harness</text>
+    <text x="1544" y="129" fill="#a2aebc" font-family="Segoe UI" font-size="20" font-weight="400" font-style="normal" text-anchor="end" data-asset-key="b-0016">TypeScript  ·  Node.js ≥ 22.18  ·  MIT</text>
+    <path d="M56 165H1544" fill="none" stroke="#30363d" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" data-asset-key="b-0017" />
+  </g>
+  <g id="cli" data-part-id="cli" data-asset-key="b-0018">
+    <path transform="translate(56 195.831634) scale(1.11266905 -3.72583480)" d="M0 0C0 .42 .34 .76 .76 .76H220.33C220.75 .76 221.09 .42 221.09 0V-26.93C221.09-27.35 220.75-27.69 220.33-27.69H.76C.34-27.69 0-27.35 0-26.93Z" fill="#161b22" fill-rule="evenodd" data-asset-key="cli-va194-e0013" data-source-key="e0013" />
+    <path transform="translate(56 195.831634) scale(1.11266905 -3.72583480)" stroke-width="1.5" stroke-linecap="butt" stroke-miterlimit="10" stroke-linejoin="miter" fill="none" stroke="#30363d" d="M0 0C0 .42 .34 .76 .76 .76H220.33C220.75 .76 221.09 .42 221.09 0V-26.93C221.09-27.35 220.75-27.69 220.33-27.69H.76C.34-27.69 0-27.35 0-26.93Z" data-asset-key="cli-va194-e0014" data-source-key="e0014" vector-effect="non-scaling-stroke" />
+    <g transform="translate(78 215) scale(0.82500)" data-icon="terminal" data-asset-key="b-0019">
+      <rect x="1" y="2" width="38" height="35" rx="6" fill="#0d1117" stroke="#58a6ff" stroke-width="1.5" data-asset-key="b-0020" />
+      <path d="M1 11H39" fill="none" stroke="#58a6ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-asset-key="b-0021" />
+      <path d="M10 18L16 23L10 28M22 28H30" fill="none" stroke="#58a6ff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" data-asset-key="b-0022" />
+      <circle cx="7" cy="7" r="1" fill="#58a6ff" data-asset-key="b-0023" />
+      <circle cx="12" cy="7" r="1" fill="#58a6ff" data-asset-key="b-0024" />
+    </g>
+    <text x="126" y="242" fill="#e6edf3" font-family="Segoe UI" font-size="25" font-weight="600" font-style="normal" data-asset-key="b-0025">CLI / REPL</text>
+    <text x="79" y="278" fill="#a2aebc" font-family="Microsoft YaHei" font-size="21" font-weight="400" font-style="normal" data-asset-key="b-0026">用户目标与指令</text>
+  </g>
+  <g id="services" data-part-id="services" data-asset-key="b-0027">
+    <path transform="translate(346 195.841623) scale(2.42201241 -3.73897707)" d="M0 0C0 .42 .33 .76 .75 .76H493.88C494.29 .76 494.63 .42 494.63 0V-26.83C494.63-27.25 494.29-27.59 493.88-27.59H.75C.33-27.59 0-27.25 0-26.83Z" fill="#161b22" fill-rule="evenodd" data-asset-key="services-va194-e0034" data-source-key="e0034" />
+    <path transform="translate(346 195.841623) scale(2.42201241 -3.73897707)" stroke-width="1.5" stroke-linecap="butt" stroke-miterlimit="10" stroke-linejoin="miter" fill="none" stroke="#30363d" d="M0 0C0 .42 .33 .76 .75 .76H493.88C494.29 .76 494.63 .42 494.63 0V-26.83C494.63-27.25 494.29-27.59 493.88-27.59H.75C.33-27.59 0-27.25 0-26.83Z" data-asset-key="services-va194-e0035" data-source-key="e0035" vector-effect="non-scaling-stroke" />
+    <g transform="translate(371 219) scale(1.10000)" data-icon="layers" data-asset-key="b-0028">
+      <path d="M3 11L20 3L37 11L20 19ZM3 20L20 28L37 20M3 29L20 37L37 29" fill="none" stroke="#58a6ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" data-asset-key="b-0029" />
+    </g>
+    <text x="436" y="237" fill="#e6edf3" font-family="Microsoft YaHei" font-size="27" font-weight="700" font-style="normal" data-asset-key="b-0030">cordis 插件 · 14 个可替换服务</text>
+    <text x="436" y="276" fill="#a2aebc" font-family="Microsoft YaHei" font-size="22" font-weight="400" font-style="normal" data-asset-key="b-0031">通过 ctx.&lt;service&gt; 组合运行时能力</text>
+    <text x="1514" y="237" fill="#58a6ff" font-family="Consolas" font-size="22" font-weight="400" font-style="normal" text-anchor="end" data-asset-key="b-0032">src/index.ts</text>
+    <text x="1514" y="274" fill="#a2aebc" font-family="Microsoft YaHei" font-size="20" font-weight="400" font-style="normal" text-anchor="end" data-asset-key="b-0033">组合根</text>
+  </g>
+  <g id="runtime" data-part-id="runtime" data-asset-key="b-0034">
+    <path transform="translate(56 340.165193) scale(3.00830924 -2.98603101)" d="M0 0C0 .59 .47 1.06 1.06 1.06H493.57C494.16 1.06 494.63 .59 494.63 0V-153.93C494.63-154.52 494.16-155 493.57-155H1.06C.47-155 0-154.52 0-153.93Z" fill="#161b22" fill-rule="evenodd" data-asset-key="runtime-va194-e0001" data-source-key="e0001" />
+    <path transform="translate(56 340.165193) scale(3.00830924 -2.98603101)" stroke-width="1.5" stroke-linecap="butt" stroke-miterlimit="10" stroke-linejoin="miter" fill="none" stroke="#30363d" d="M0 0C0 .59 .47 1.06 1.06 1.06H493.57C494.16 1.06 494.63 .59 494.63 0V-153.93C494.63-154.52 494.16-155 493.57-155H1.06C.47-155 0-154.52 0-153.93Z" data-asset-key="runtime-va194-e0002" data-source-key="e0002" vector-effect="non-scaling-stroke" />
+    <text x="88" y="383" fill="#e6edf3" font-family="Microsoft YaHei" font-size="28" font-weight="700" font-style="normal" data-asset-key="b-0035">模型与工具的运行闭环</text>
+    <text x="1510" y="382" fill="#58a6ff" font-family="Consolas" font-size="22" font-weight="400" font-style="normal" text-anchor="end" data-asset-key="b-0036">ctx.agentLoop</text>
+    <path d="M88 402H1510" fill="none" stroke="#30363d" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" data-asset-key="b-0037" />
+  </g>
+  <g id="session" data-part-id="session" data-asset-key="b-0038">
+    <path transform="translate(104 432.209139) scale(3.48274750 -6.85413005)" d="M0 0C0 .42 .35 .76 .77 .76H92.27C92.69 .76 93.03 .42 93.03 0V-26.93C93.03-27.35 92.69-27.69 92.27-27.69H.77C.35-27.69 0-27.35 0-26.93Z" fill="#20192d" fill-rule="evenodd" data-asset-key="session-va194-e0019" data-source-key="e0019" />
+    <path transform="translate(104 432.209139) scale(3.48274750 -6.85413005)" stroke-width="1.5" stroke-linecap="butt" stroke-miterlimit="10" stroke-linejoin="miter" fill="none" stroke="#bc8cff" d="M0 0C0 .42 .35 .76 .77 .76H92.27C92.69 .76 93.03 .42 93.03 0V-26.93C93.03-27.35 92.69-27.69 92.27-27.69H.77C.35-27.69 0-27.35 0-26.93Z" data-asset-key="session-va194-e0020" data-source-key="e0020" vector-effect="non-scaling-stroke" />
+    <g transform="translate(128 451) scale(1.00000)" data-icon="events" data-asset-key="b-0039">
+      <rect x="4" y="2" width="32" height="36" rx="3" fill="#20192d" stroke="#bc8cff" stroke-width="1.5" data-asset-key="b-0040" />
+      <circle cx="12" cy="11" r="2" fill="#bc8cff" data-asset-key="b-0041" />
+      <path d="M19 11H29" fill="none" stroke="#bc8cff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" data-asset-key="b-0042" />
+      <circle cx="12" cy="20" r="2" fill="#bc8cff" data-asset-key="b-0043" />
+      <path d="M19 20H29" fill="none" stroke="#bc8cff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" data-asset-key="b-0044" />
+      <circle cx="12" cy="29" r="2" fill="#bc8cff" data-asset-key="b-0045" />
+      <path d="M19 29H29" fill="none" stroke="#bc8cff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" data-asset-key="b-0046" />
+    </g>
+    <text x="185" y="477" fill="#e6edf3" font-family="Segoe UI" font-size="29" font-weight="600" font-style="normal" data-asset-key="b-0047">Session</text>
+    <text x="129" y="524" fill="#e6edf3" font-family="Microsoft YaHei" font-size="23" font-weight="400" font-style="normal" data-asset-key="b-0048">只追加事件日志</text>
+    <text x="129" y="561" fill="#a2aebc" font-family="Microsoft YaHei" font-size="20" font-weight="400" font-style="normal" data-asset-key="b-0049">用户 · 模型 · 工具结果</text>
+    <text x="129" y="599" fill="#bc8cff" font-family="Consolas" font-size="20" font-weight="400" font-style="normal" data-asset-key="b-0050">ctx.sessions</text>
+  </g>
+  <g id="context" data-part-id="context" data-asset-key="b-0051">
+    <path transform="translate(484 432.209139) scale(2.77359708 -6.85413005)" d="M0 0C0 .42 .34 .76 .76 .76H92.26C92.68 .76 93.02 .42 93.02 0V-26.93C93.02-27.35 92.68-27.69 92.26-27.69H.76C.34-27.69 0-27.35 0-26.93Z" fill="#101f31" fill-rule="evenodd" data-asset-key="context-va194-e0022" data-source-key="e0022" />
+    <path transform="translate(484 432.209139) scale(2.77359708 -6.85413005)" stroke-width="1.5" stroke-linecap="butt" stroke-miterlimit="10" stroke-linejoin="miter" fill="none" stroke="#58a6ff" d="M0 0C0 .42 .34 .76 .76 .76H92.26C92.68 .76 93.02 .42 93.02 0V-26.93C93.02-27.35 92.68-27.69 92.26-27.69H.76C.34-27.69 0-27.35 0-26.93Z" data-asset-key="context-va194-e0023" data-source-key="e0023" vector-effect="non-scaling-stroke" />
+    <g transform="translate(506 452) scale(0.95000)" data-icon="context" data-asset-key="b-0052">
+      <path d="M10 5H32V33H10ZM5 11V38H27" fill="none" stroke="#58a6ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" data-asset-key="b-0053" />
+      <path d="M16 13H26M16 20H27M16 27H23" fill="none" stroke="#58a6ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-asset-key="b-0054" />
+    </g>
+    <text x="556" y="478" fill="#e6edf3" font-family="Microsoft YaHei" font-size="25" font-weight="700" font-style="normal" data-asset-key="b-0055">组装上下文</text>
+    <text x="509" y="524" fill="#e6edf3" font-family="Microsoft YaHei" font-size="22" font-weight="400" font-style="normal" data-asset-key="b-0056">投影模型消息</text>
+    <text x="509" y="560" fill="#a2aebc" font-family="Microsoft YaHei" font-size="21" font-weight="400" font-style="normal" data-asset-key="b-0057">逐步注入系统提示</text>
+    <text x="509" y="599" fill="#58a6ff" font-family="Consolas" font-size="19" font-weight="400" font-style="normal" data-asset-key="b-0058">ctx.systemPrompt</text>
+  </g>
+  <g id="model" data-part-id="model" data-asset-key="b-0059">
+    <path transform="translate(798 432.209139) scale(2.85960009 -6.85413005)" d="M0 0C0 .42 .34 .76 .76 .76H92.26C92.68 .76 93.02 .42 93.02 0V-26.93C93.02-27.35 92.68-27.69 92.26-27.69H.76C.34-27.69 0-27.35 0-26.93Z" fill="#101f31" fill-rule="evenodd" data-asset-key="model-va194-e0042" data-source-key="e0042" />
+    <path transform="translate(798 432.209139) scale(2.85960009 -6.85413005)" stroke-width="1.5" stroke-linecap="butt" stroke-miterlimit="10" stroke-linejoin="miter" fill="none" stroke="#58a6ff" d="M0 0C0 .42 .34 .76 .76 .76H92.26C92.68 .76 93.02 .42 93.02 0V-26.93C93.02-27.35 92.68-27.69 92.26-27.69H.76C.34-27.69 0-27.35 0-26.93Z" data-asset-key="model-va194-e0043" data-source-key="e0043" vector-effect="non-scaling-stroke" />
+    <g transform="translate(819 451) scale(1.00000)" data-icon="model" data-asset-key="b-0060">
+      <rect x="8" y="8" width="24" height="24" rx="5" fill="#101f31" stroke="#58a6ff" stroke-width="1.5" data-asset-key="b-0061" />
+      <path d="M13 3V8M13 32V37M3 13H8M32 13H37" fill="none" stroke="#58a6ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" data-asset-key="b-0062" />
+      <path d="M20 3V8M20 32V37M3 20H8M32 20H37" fill="none" stroke="#58a6ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" data-asset-key="b-0063" />
+      <path d="M27 3V8M27 32V37M3 27H8M32 27H37" fill="none" stroke="#58a6ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" data-asset-key="b-0064" />
+      <path d="M14 24L20 14L26 24M17 21H23" fill="none" stroke="#58a6ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" data-asset-key="b-0065" />
+    </g>
+    <text x="874" y="478" fill="#e6edf3" font-family="Segoe UI" font-size="28" font-weight="600" font-style="normal" data-asset-key="b-0066">DeepSeek</text>
+    <text x="823" y="524" fill="#e6edf3" font-family="Microsoft YaHei" font-size="21" font-weight="400" font-style="normal" data-asset-key="b-0067">可替换的模型提供方</text>
+    <text x="823" y="560" fill="#a2aebc" font-family="Microsoft YaHei" font-size="20" font-weight="400" font-style="normal" data-asset-key="b-0068">请求模型，判断下一步</text>
+    <text x="823" y="599" fill="#58a6ff" font-family="Consolas" font-size="20" font-weight="400" font-style="normal" data-asset-key="b-0069">ctx.llm</text>
+  </g>
+  <g id="tools" data-part-id="tools" data-asset-key="b-0070">
+    <path transform="translate(1120 432.210970) scale(4.17338927 -6.85654008)" d="M0 0C0 .42 .34 .76 .76 .76H92.21C92.63 .76 92.97 .42 92.97 0V-26.92C92.97-27.34 92.63-27.68 92.21-27.68H.76C.34-27.68 0-27.34 0-26.92Z" fill="#10241b" fill-rule="evenodd" data-asset-key="tools-va194-e0025" data-source-key="e0025" />
+    <path transform="translate(1120 432.210970) scale(4.17338927 -6.85654008)" stroke-width="1.5" stroke-linecap="butt" stroke-miterlimit="10" stroke-linejoin="miter" fill="none" stroke="#3fb950" d="M0 0C0 .42 .34 .76 .76 .76H92.21C92.63 .76 92.97 .42 92.97 0V-26.92C92.97-27.34 92.63-27.68 92.21-27.68H.76C.34-27.68 0-27.34 0-26.92Z" data-asset-key="tools-va194-e0026" data-source-key="e0026" vector-effect="non-scaling-stroke" />
+    <g transform="translate(1142 449) scale(0.97500)" data-icon="shield" data-asset-key="b-0071">
+      <path d="M20 2L35 8V20C35 29 27 35 20 38C13 35 5 29 5 20V8Z" fill="none" stroke="#3fb950" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" data-asset-key="b-0072" />
+      <path d="M12 20L18 26L29 14" fill="none" stroke="#3fb950" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" data-asset-key="b-0073" />
+    </g>
+    <text x="1194" y="477" fill="#e6edf3" font-family="Microsoft YaHei" font-size="27" font-weight="700" font-style="normal" data-asset-key="b-0074">受保护的工具</text>
+    <text x="1144" y="513" fill="#3fb950" font-family="Consolas" font-size="20" font-weight="400" font-style="normal" data-asset-key="b-0075">approval + sandbox</text>
+    <text x="1144" y="547" fill="#e6edf3" font-family="Microsoft YaHei" font-size="20" font-weight="400" font-style="normal" data-asset-key="b-0076">审批失败即拒绝 · 拦截越界路径</text>
+    <path d="M1144 562H1484" fill="none" stroke="#30363d" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" data-asset-key="b-0077" />
+    <text x="1144" y="587" fill="#e6edf3" font-family="Consolas" font-size="18" font-weight="400" font-style="normal" data-asset-key="b-0078">read_file · write_file · edit_file</text>
+    <text x="1144" y="611" fill="#e6edf3" font-family="Consolas" font-size="18" font-weight="400" font-style="normal" data-asset-key="b-0079">glob · grep · shell</text>
+  </g>
+  <g id="persistence" data-part-id="persistence" data-asset-key="b-0080">
+    <path transform="translate(104 670.822928) scale(1.47918188 -2.39858907)" d="M0 0C0 .42 .34 .76 .76 .76H218.28C218.69 .76 219.04 .42 219.04 0V-26.83C219.04-27.25 218.69-27.59 218.28-27.59H.76C.34-27.59 0-27.25 0-26.83Z" fill="#20192d" fill-rule="evenodd" data-asset-key="persistence-va194-e0003" data-source-key="e0003" />
+    <path transform="translate(104 670.822928) scale(1.47918188 -2.39858907)" stroke-width="1.5" stroke-linecap="butt" stroke-miterlimit="10" stroke-linejoin="miter" fill="none" stroke="#30363d" d="M0 0C0 .42 .34 .76 .76 .76H218.28C218.69 .76 219.04 .42 219.04 0V-26.83C219.04-27.25 218.69-27.59 218.28-27.59H.76C.34-27.59 0-27.25 0-26.83Z" data-asset-key="persistence-va194-e0004" data-source-key="e0004" vector-effect="non-scaling-stroke" />
+    <g transform="translate(123 681) scale(0.92500)" data-icon="storage" data-asset-key="b-0081">
+      <ellipse cx="20" cy="8" rx="15" ry="6" fill="#20192d" stroke="#bc8cff" stroke-width="2" data-asset-key="b-0082" />
+      <path d="M5 8V30C5 38 35 38 35 30V8M5 19C5 27 35 27 35 19" fill="none" stroke="#bc8cff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-asset-key="b-0083" />
+    </g>
+    <text x="175" y="696" fill="#e6edf3" font-family="Microsoft YaHei" font-size="22" font-weight="700" font-style="normal" data-asset-key="b-0084">JSONL 持久化</text>
+    <text x="175" y="724" fill="#a2aebc" font-family="Microsoft YaHei" font-size="19" font-weight="400" font-style="normal" data-asset-key="b-0085">监听事件 · 恢复会话</text>
+  </g>
+  <g id="stop" data-part-id="stop" data-asset-key="b-0086">
+    <rect x="802" y="660" width="258" height="46" rx="23" fill="#0d1117" stroke="#30363d" stroke-width="1.5" data-asset-key="b-0087" />
+    <circle cx="826" cy="683" r="5" fill="#a2aebc" data-asset-key="b-0088" />
+    <text x="846" y="690" fill="#e6edf3" font-family="Microsoft YaHei" font-size="20" font-weight="400" font-style="normal" data-asset-key="b-0089">无工具请求，结束</text>
+  </g>
+  <g id="relations" data-part-id="relations" data-asset-key="b-0090">
+    <polyline id="cli-to-services" points="302,246 346,246" fill="none" stroke="#58a6ff" stroke-width="2.3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-blue)" data-from="cli" data-to="services" data-meaning="CLI 使用 cordis 插件服务" data-asset-key="b-0091" />
+    <polyline id="services-to-runtime" points="802,299 802,337" fill="none" stroke="#58a6ff" stroke-width="2.3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-blue)" data-from="services" data-to="runtime" data-meaning="插件暴露并组合运行时服务" stroke-dasharray="6 6" data-asset-key="b-0092" />
+    <polyline id="session-to-context" points="428,526 484,526" fill="none" stroke="#bc8cff" stroke-width="2.3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-purple)" data-from="session" data-to="context" data-meaning="由 Session 事件投影模型消息" data-asset-key="b-0093" />
+    <polyline id="context-to-model" points="742,526 798,526" fill="none" stroke="#58a6ff" stroke-width="2.3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-blue)" data-from="context" data-to="model" data-meaning="每步组装系统提示和上下文后请求模型" data-asset-key="b-0094" />
+    <polyline id="model-to-tools" points="1064,526 1120,526" fill="none" stroke="#3fb950" stroke-width="2.3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-green)" data-from="model" data-to="tools" data-meaning="模型请求工具，进入审批及工作区路径检查" data-asset-key="b-0095" />
+    <polyline id="tools-to-session" points="1314,622 1314,774 80,774 80,563 104,563" fill="none" stroke="#3fb950" stroke-width="2.3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-green)" data-from="tools" data-to="session" data-meaning="工具结果写回 Session 后进入下一步" data-asset-key="b-0096" />
+    <polyline id="session-jsonl" points="266,622 266,669" fill="none" stroke="#bc8cff" stroke-width="2.3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-purple)" data-from="session" data-to="persistence" data-meaning="JSONL 观察事件并支持会话恢复" marker-start="url(#arrow-purple)" stroke-dasharray="6 6" data-asset-key="b-0097" />
+    <polyline id="model-to-stop" points="931,622 931,660" fill="none" stroke="#a2aebc" stroke-width="2.3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-muted)" data-from="model" data-to="stop" data-meaning="无工具请求则结束" data-asset-key="b-0098" />
+    <text x="288" y="651" fill="#bc8cff" font-family="Microsoft YaHei" font-size="18" font-weight="400" font-style="normal" data-asset-key="b-0099">事件 / 恢复</text>
+    <text x="862" y="751" fill="#3fb950" font-family="Microsoft YaHei" font-size="21" font-weight="400" font-style="normal" text-anchor="middle" data-asset-key="b-0100">工具结果写回 Session，随后再次请求模型</text>
+  </g>
+  <g id="boundaries" data-part-id="boundaries" data-asset-key="b-0101">
+    <path transform="translate(56 844.227513) scale(3.25805980 -6.87830688)" d="M0 0C0 .42 .33 .76 .75 .76H204.27C204.69 .76 205.03 .42 205.03 0V-26.83C205.03-27.25 204.69-27.59 204.27-27.59H.75C.33-27.59 0-27.25 0-26.83Z" fill="#161b22" fill-rule="evenodd" data-asset-key="boundaries-va194-e0006" data-source-key="e0006" />
+    <path transform="translate(56 844.227513) scale(3.25805980 -6.87830688)" stroke-width="1.5" stroke-linecap="butt" stroke-miterlimit="10" stroke-linejoin="miter" fill="none" stroke="#30363d" d="M0 0C0 .42 .33 .76 .75 .76H204.27C204.69 .76 205.03 .42 205.03 0V-26.83C205.03-27.25 204.69-27.59 204.27-27.59H.75C.33-27.59 0-27.25 0-26.83Z" data-asset-key="boundaries-va194-e0007" data-source-key="e0007" vector-effect="non-scaling-stroke" />
+    <g transform="translate(80 859) scale(0.82500)" data-icon="layers" data-asset-key="b-0102">
+      <path d="M3 11L20 3L37 11L20 19ZM3 20L20 28L37 20M3 29L20 37L37 29" fill="none" stroke="#58a6ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" data-asset-key="b-0103" />
+    </g>
+    <text x="127" y="886" fill="#e6edf3" font-family="Microsoft YaHei" font-size="26" font-weight="700" font-style="normal" data-asset-key="b-0104">框架与运行时分层</text>
+    <text x="82" y="930" fill="#e6edf3" font-family="Microsoft YaHei" font-size="22" font-weight="400" font-style="normal" data-asset-key="b-0105">core：框架无关，不导入 cordis</text>
+    <text x="82" y="968" fill="#a2aebc" font-family="Microsoft YaHei" font-size="21" font-weight="400" font-style="normal" data-asset-key="b-0106">plugins：通过 ctx.&lt;service&gt; 暴露能力</text>
+    <text x="82" y="1006" fill="#a2aebc" font-family="Microsoft YaHei" font-size="21" font-weight="400" font-style="normal" data-asset-key="b-0107">providers：DeepSeek 与 JSONL 实现</text>
+  </g>
+  <g id="optional" data-part-id="optional" data-asset-key="b-0108">
+    <path transform="translate(748 844.209139) scale(4.60994961 -6.85413005)" d="M0 0C0 .42 .34 .76 .76 .76H171.91C172.33 .76 172.67 .42 172.67 0V-26.93C172.67-27.35 172.33-27.69 171.91-27.69H.76C.34-27.69 0-27.35 0-26.93Z" fill="#161b22" fill-rule="evenodd" data-asset-key="optional-va194-e0016" data-source-key="e0016" />
+    <path transform="translate(748 844.209139) scale(4.60994961 -6.85413005)" stroke-width="1.5" stroke-linecap="butt" stroke-miterlimit="10" stroke-linejoin="miter" fill="none" stroke="#30363d" d="M0 0C0 .42 .34 .76 .76 .76H171.91C172.33 .76 172.67 .42 172.67 0V-26.93C172.67-27.35 172.33-27.69 171.91-27.69H.76C.34-27.69 0-27.35 0-26.93Z" data-asset-key="optional-va194-e0017" data-source-key="e0017" vector-effect="non-scaling-stroke" />
+    <g transform="translate(773 859) scale(0.85000)" data-icon="branch" data-asset-key="b-0109">
+      <path d="M10 8V30C10 35 30 35 30 25V10M10 20C10 25 30 25 30 15" fill="none" stroke="#bc8cff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-asset-key="b-0110" />
+      <circle cx="10" cy="6" r="4" fill="#161b22" stroke="#bc8cff" stroke-width="2" data-asset-key="b-0111" />
+      <circle cx="10" cy="32" r="4" fill="#161b22" stroke="#bc8cff" stroke-width="2" data-asset-key="b-0112" />
+      <circle cx="30" cy="7" r="4" fill="#161b22" stroke="#bc8cff" stroke-width="2" data-asset-key="b-0113" />
+    </g>
+    <text x="822" y="886" fill="#e6edf3" font-family="Microsoft YaHei" font-size="26" font-weight="700" font-style="normal" data-asset-key="b-0114">按需启用的 Harness 能力</text>
+    <rect x="775" y="909" width="192" height="45" rx="7" fill="#0d1117" stroke="#30363d" stroke-width="1.5" data-asset-key="b-0115" />
+    <text x="871.0" y="939" fill="#e6edf3" font-family="Microsoft YaHei" font-size="21" font-weight="400" font-style="normal" text-anchor="middle" data-asset-key="b-0116">上下文压缩</text>
+    <rect x="988" y="909" width="192" height="45" rx="7" fill="#0d1117" stroke="#30363d" stroke-width="1.5" data-asset-key="b-0117" />
+    <text x="1084.0" y="939" fill="#e6edf3" font-family="Microsoft YaHei" font-size="21" font-weight="400" font-style="normal" text-anchor="middle" data-asset-key="b-0118">token 预算</text>
+    <rect x="1201" y="909" width="192" height="45" rx="7" fill="#0d1117" stroke="#30363d" stroke-width="1.5" data-asset-key="b-0119" />
+    <text x="1297.0" y="939" fill="#e6edf3" font-family="Microsoft YaHei" font-size="21" font-weight="400" font-style="normal" text-anchor="middle" data-asset-key="b-0120">持久目标</text>
+    <text x="777" y="995" fill="#bc8cff" font-family="Microsoft YaHei" font-size="21" font-weight="400" font-style="normal" data-asset-key="b-0121">演化实验：策略候选须显式选择，不自动晋升</text>
+  </g>
+</svg>
